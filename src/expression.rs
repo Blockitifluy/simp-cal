@@ -3,11 +3,11 @@ use crate::{
     operator::{Operator, get_operator_in_tokens, sort_operators_by_binding},
     token::Token,
 };
-use std::{fmt, ops::RangeInclusive};
+use std::{error::Error, fmt, ops::RangeInclusive};
 
 /// A part of a parsed calculation. Its partialness is based on it's neighbouring expressions and
 /// the operator's binding power.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Expression {
     /// An expression with only it's operator owned.
     Op {
@@ -84,28 +84,26 @@ fn get_expression_type(
     prev_oper: Option<usize>,
     next_oper: Option<usize>,
 ) -> Expression {
-    let (prev_taken, next_taken) = (prev_oper.is_some(), next_oper.is_some());
-
-    match (prev_taken, next_taken) {
-        (false, false) => Expression::Whole {
+    match (prev_oper, next_oper) {
+        (None, None) => Expression::Whole {
             left: prev,
             operator: oper,
             right: next,
         },
-        (false, true) => Expression::Left {
+        (None, Some(r_expr)) => Expression::Left {
             left: prev,
             operator: oper,
-            right: next_oper.unwrap(),
+            right: r_expr,
         },
-        (true, false) => Expression::Right {
-            left: prev_oper.unwrap(),
+        (Some(l_expr), None) => Expression::Right {
+            left: l_expr,
             operator: oper,
             right: next,
         },
-        (true, true) => Expression::Op {
-            left: prev_oper.unwrap(),
+        (Some(l_expr), Some(r_expr)) => Expression::Op {
+            left: l_expr,
             operator: oper,
-            right: next_oper.unwrap(),
+            right: r_expr,
         },
     }
 }
@@ -146,22 +144,32 @@ fn operation_in_cal_to_expr(
     place: usize,
     oper: Operator,
     oper_len: usize,
-) -> Expression {
-    let (prev, next) = (
-        tokens[place - 1].unwrap_number(),
-        tokens[place + 1].unwrap_number(),
-    );
+) -> Result<Expression, ExpressionParsingError> {
+    let (prev_token, next_token) = (tokens[place - 1], tokens[place + 1]);
+
+    let Token::Number(prev) = prev_token else {
+        return Err(ExpressionParsingError::OperantNotNumber {
+            left: true,
+            token: prev_token,
+        });
+    };
+    let Token::Number(next) = next_token else {
+        return Err(ExpressionParsingError::OperantNotNumber {
+            left: false,
+            token: next_token,
+        });
+    };
 
     if taken_tokens.is_empty() {
-        Expression::Whole {
+        Ok(Expression::Whole {
             left: prev,
             operator: oper,
             right: next,
-        }
+        })
     } else {
         let (prev_expr, next_expr) = get_neighbouring_expressions(place, taken_tokens, oper_len);
 
-        get_expression_type(oper, prev, next, prev_expr, next_expr)
+        Ok(get_expression_type(oper, prev, next, prev_expr, next_expr))
     }
 }
 
@@ -170,7 +178,7 @@ fn operation_in_cal_to_expr(
 /// - `tokens`: a slice of `Token`s
 /// # Returns
 /// A vec of `Expression`s.
-pub fn tree_tokens(tokens: &[Token]) -> Vec<Expression> {
+pub fn tree_tokens(tokens: &[Token]) -> Result<Vec<Expression>, ExpressionParsingError> {
     let mut operators = get_operator_in_tokens(tokens);
     sort_operators_by_binding(&mut operators);
 
@@ -179,7 +187,7 @@ pub fn tree_tokens(tokens: &[Token]) -> Vec<Expression> {
 
     for (i, (place, oper)) in operators.iter().enumerate() {
         let expr: Expression =
-            operation_in_cal_to_expr(&taken_tokens, tokens, *place, *oper, operators.len());
+            operation_in_cal_to_expr(&taken_tokens, tokens, *place, *oper, operators.len())?;
 
         let bind = ExprBind::new(i, *place);
 
@@ -187,5 +195,25 @@ pub fn tree_tokens(tokens: &[Token]) -> Vec<Expression> {
         taken_tokens.push(bind);
     }
 
-    expressions
+    Ok(expressions)
 }
+
+#[derive(Debug)]
+pub enum ExpressionParsingError {
+    OperantNotNumber { left: bool, token: Token },
+}
+impl fmt::Display for ExpressionParsingError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::OperantNotNumber { left, token } => {
+                write!(
+                    f,
+                    "{} token {token:?} is not a number",
+                    if *left { "left" } else { "right" }
+                )
+            }
+        }
+    }
+}
+
+impl Error for ExpressionParsingError {}

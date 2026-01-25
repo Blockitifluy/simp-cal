@@ -1,8 +1,11 @@
 //! Handles parsing tokens.
+use core::fmt;
+use std::error::Error;
+
 use crate::operator::Operator;
 
 /// Represents a piece of data inside of a calculation.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Token {
     /// A single number
     Number(f32),
@@ -52,9 +55,20 @@ impl Token {
 /// A result of:
 /// - `Ok`: A vec of tokens
 /// - `Err`: A string
-pub fn parse_tokens(cal: &str) -> Result<Vec<Token>, String> {
+pub fn parse_tokens(cal: &str) -> Result<Vec<Token>, TokenParseError> {
     let mut r: Vec<Token> = Vec::with_capacity(8);
     let mut b = String::with_capacity(16);
+
+    macro_rules! parse_b {
+        () => {
+            let num_ex = b.parse::<f32>();
+            let Ok(num) = num_ex else {
+                return Err(TokenParseError::NumberParse { token: b });
+            };
+
+            r.push(Token::Number(num));
+        };
+    }
 
     for c in cal.chars() {
         let operator_null = Operator::get_operator_from_sign(c);
@@ -63,28 +77,33 @@ pub fn parse_tokens(cal: &str) -> Result<Vec<Token>, String> {
             continue;
         };
 
-        let num_ex = b.parse::<f32>();
-        let Ok(num) = num_ex else {
-            return Err(format!("couldn't parse {} as a number", b));
-        };
+        parse_b!();
 
-        r.push(Token::Number(num));
         r.push(Token::Operator(operator));
         b.clear();
     }
 
     if !b.is_empty() {
-        let num_ex = b.parse::<f32>();
-        let Ok(num) = num_ex else {
-            return Err(format!("couldn't parse {} as a number", b));
-        };
-
-        r.push(Token::Number(num));
+        parse_b!();
     }
 
     r.shrink_to_fit();
     Ok(r)
 }
+
+#[derive(Debug)]
+pub enum TokenParseError {
+    NumberParse { token: String },
+}
+impl fmt::Display for TokenParseError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::NumberParse { token } => write!(f, "couldn't parse {token} as a number"),
+        }
+    }
+}
+
+impl Error for TokenParseError {}
 
 /// Removes unnessary characters and data from the calculation string, e.g. whitespace.
 /// # Arguements

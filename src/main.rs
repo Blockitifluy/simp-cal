@@ -4,11 +4,16 @@ pub mod expression;
 pub mod operator;
 pub mod token;
 
+#[cfg(test)]
+mod tests {
+    mod token_test;
+}
+
 use std::{env, io};
 
 use crate::{
     eval::eval_calculation,
-    expression::tree_tokens,
+    expression::{Expression, tree_tokens},
     token::{parse_tokens, reduce_calculation},
 };
 
@@ -34,13 +39,7 @@ macro_rules! input {
     }};
 }
 
-fn main() {
-    let buffer = input!();
-    let args: Vec<String> = env::args().collect();
-
-    let is_verbose = is_flag_set!(args, "-v", "--verbose");
-    let is_eval = is_flag_set!(args, "--eval");
-
+fn parse_calculation(buffer: String, is_verbose: bool, is_eval: bool) -> Vec<Expression> {
     let cal = reduce_calculation(&buffer);
 
     // Parsing
@@ -50,7 +49,7 @@ fn main() {
     let tokens = parse_tokens(&cal).unwrap();
     verbose!(is_verbose, "tokens: {:?}", tokens);
 
-    let exprs = tree_tokens(&tokens);
+    let exprs = tree_tokens(&tokens).unwrap();
     if is_verbose || !is_eval {
         verbose!(is_verbose, "expressions:");
         for expr in exprs.iter() {
@@ -59,6 +58,17 @@ fn main() {
     }
 
     verbose!(is_verbose, "expr data: {:?}", exprs);
+    exprs
+}
+
+fn main() {
+    let buffer = input!();
+    let args: Vec<String> = env::args().collect();
+
+    let is_verbose = is_flag_set!(args, "-v", "--verbose");
+    let is_eval = is_flag_set!(args, "--eval");
+
+    let exprs = parse_calculation(buffer, is_verbose, is_eval);
 
     if is_eval {
         verbose!(is_verbose, "\n# Eval");

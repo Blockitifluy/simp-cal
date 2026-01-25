@@ -3,7 +3,7 @@ use crate::token::Token;
 use std::fmt;
 
 /// An operator used in calculations.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Operator {
     /// Add '+'
     Add,
