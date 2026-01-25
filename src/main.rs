@@ -1,3 +1,4 @@
+#[warn(missing_docs)]
 use std::{fmt, io, ops::RangeInclusive};
 
 #[derive(Debug, Clone, Copy)]
@@ -120,15 +121,32 @@ impl fmt::Display for Expression {
     }
 }
 
-macro_rules! input {
-    () => {{
-        let mut buffer = String::new();
-        let stdin = io::stdin();
-        stdin.read_line(&mut buffer).unwrap();
-        buffer
-    }};
+#[derive(Debug, Clone)]
+struct ExprBind {
+    pub by: usize,
+    pub token_pos: usize,
+    pub range: RangeInclusive<usize>,
+}
+impl ExprBind {
+    fn new(by: usize, token_pos: usize) -> Self {
+        Self {
+            by,
+            token_pos,
+            range: (token_pos - 1)..=(token_pos + 1),
+        }
+    }
 }
 
+// reduction
+
+/// Removes unnessary characters and data from the calculation string, e.g. whitespace.
+/// # Arguements
+/// - `s`: calculation string
+/// # Returns
+/// A reduces calculation
+/// # Example
+/// Input: `1 +   5 ^ 2`
+/// Output: `1+5^2`
 fn reduce_calculation(s: &str) -> String {
     let mut r = String::with_capacity(s.len());
     for c in s.chars() {
@@ -141,6 +159,15 @@ fn reduce_calculation(s: &str) -> String {
     r
 }
 
+// token parsing and manulation
+
+/// Parses the tokens of a calculation.
+/// # Arguements
+/// - `cal`: calculation string
+/// # Returns
+/// A result of:
+/// - `Ok`: A vec of tokens
+/// - `Err`: A string
 fn parse_tokens(cal: &str) -> Result<Vec<Token>, String> {
     let mut r: Vec<Token> = Vec::with_capacity(8);
     let mut b = String::with_capacity(16);
@@ -175,6 +202,13 @@ fn parse_tokens(cal: &str) -> Result<Vec<Token>, String> {
     Ok(r)
 }
 
+// operators
+
+/// Gets all the operators in a token slice.
+/// # Arguements
+/// - `tokens`: a slice of tokens
+/// # Returns
+/// A vec of the index of the operators and operator.
 fn get_operator_in_tokens(tokens: &[Token]) -> Vec<(usize, Operator)> {
     tokens
         .iter()
@@ -184,11 +218,16 @@ fn get_operator_in_tokens(tokens: &[Token]) -> Vec<(usize, Operator)> {
         .collect()
 }
 
+/// Sorts operators by it's binding power.
+/// # Arguements
+/// - `operators`: A mutable slice of `(usize, Operator)`
 fn sort_operators_by_binding(operators: &mut [(usize, Operator)]) {
     operators.sort_by(|a, b| {
         (b.1.get_binding_power() - a.1.get_binding_power()).cmp(&a.1.get_binding_power())
     });
 }
+
+// expression parsing
 
 fn get_expression_type(
     oper: Operator,
@@ -225,7 +264,7 @@ fn get_expression_type(
 
 fn get_neighbouring_expressions(
     place: usize,
-    taken_tokens: &[RangeInclusive<usize>],
+    taken_tokens: &[ExprBind],
     oper_len: usize,
 ) -> (Option<usize>, Option<usize>) {
     let (mut prev_expr, mut next_expr): (Option<usize>, Option<usize>) = (None, None);
@@ -233,8 +272,8 @@ fn get_neighbouring_expressions(
     if place > 2 {
         let prev_i = place - 2;
         for taken in taken_tokens.iter() {
-            if taken.contains(&prev_i) {
-                prev_expr = Some(prev_i);
+            if taken.range.contains(&prev_i) {
+                prev_expr = Some(taken.by);
                 break;
             }
         }
@@ -243,8 +282,8 @@ fn get_neighbouring_expressions(
     if oper_len + 2 > place {
         let next_i = place + 2;
         for taken in taken_tokens.iter() {
-            if taken.contains(&next_i) {
-                next_expr = Some(next_i);
+            if taken.range.contains(&next_i) {
+                next_expr = Some(taken.by);
                 break;
             }
         }
@@ -253,59 +292,58 @@ fn get_neighbouring_expressions(
     (prev_expr, next_expr)
 }
 
+fn operation_in_cal_to_expr(
+    taken_tokens: &[ExprBind],
+    tokens: &[Token],
+    place: usize,
+    oper: Operator,
+    oper_len: usize,
+) -> Expression {
+    let (prev, next) = (
+        tokens[place - 1].unwrap_number(),
+        tokens[place + 1].unwrap_number(),
+    );
+
+    if taken_tokens.is_empty() {
+        Expression::Whole {
+            left: prev,
+            operator: oper,
+            right: next,
+        }
+    } else {
+        let (prev_expr, next_expr) = get_neighbouring_expressions(place, &taken_tokens, oper_len);
+
+        get_expression_type(oper, prev, next, prev_expr, next_expr)
+    }
+}
+
 fn tree_tokens(tokens: &[Token]) -> Vec<Expression> {
     let mut operators = get_operator_in_tokens(tokens);
     sort_operators_by_binding(&mut operators);
 
     let mut expressions = Vec::<Expression>::new();
-    let mut taken_tokens = Vec::<RangeInclusive<usize>>::new();
+    let mut taken_tokens = Vec::<ExprBind>::new();
 
-    for (place, oper) in operators.iter() {
-        let (prev, next) = (
-            tokens[place - 1].unwrap_number(),
-            tokens[place + 1].unwrap_number(),
-        );
+    for (i, (place, oper)) in operators.iter().enumerate() {
+        let expr: Expression =
+            operation_in_cal_to_expr(&taken_tokens, &tokens, *place, *oper, operators.len());
 
-        let expr: Expression;
-
-        if taken_tokens.is_empty() {
-            expr = Expression::Whole {
-                left: prev,
-                operator: *oper,
-                right: next,
-            };
-        } else {
-            let (mut prev_expr, mut next_expr): (Option<usize>, Option<usize>) =
-                get_neighbouring_expressions(*place, &taken_tokens, operators.len());
-
-            if *place > 2 {
-                let prev_i = place - 2;
-                for taken in taken_tokens.iter() {
-                    if taken.contains(&prev_i) {
-                        prev_expr = Some(prev_i);
-                        break;
-                    }
-                }
-            }
-
-            if operators.len() + 2 > *place {
-                let next_i = place + 2;
-                for taken in taken_tokens.iter() {
-                    if taken.contains(&next_i) {
-                        next_expr = Some(next_i);
-                        break;
-                    }
-                }
-            }
-
-            expr = get_expression_type(*oper, prev, next, prev_expr, next_expr);
-        }
+        let bind = ExprBind::new(i, *place);
 
         expressions.push(expr);
-        taken_tokens.push((place - 1)..=(place + 1));
+        taken_tokens.push(bind);
     }
 
     expressions
+}
+
+macro_rules! input {
+    () => {{
+        let mut buffer = String::new();
+        let stdin = io::stdin();
+        stdin.read_line(&mut buffer).unwrap();
+        buffer
+    }};
 }
 
 fn main() {
@@ -322,4 +360,5 @@ fn main() {
     for expr in exprs.iter() {
         println!("{}", expr);
     }
+    println!("expr data: {:?}", exprs);
 }
