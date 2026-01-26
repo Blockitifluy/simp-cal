@@ -49,16 +49,26 @@ pub enum Expression {
 impl fmt::Display for Expression {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Op { operator, .. } => write!(f, ".. {} ..", operator),
-            Self::Left { left, operator, .. } => write!(f, "{} {} ..", left, operator),
+            Self::Op {
+                left,
+                operator,
+                right,
+            } => write!(f, "expr({left}) {operator} expr({right})"),
+            Self::Left {
+                left,
+                operator,
+                right,
+            } => write!(f, "{left} {operator} expr({right})"),
             Self::Right {
-                operator, right, ..
-            } => write!(f, ".. {} {}", operator, right),
+                operator,
+                right,
+                left,
+            } => write!(f, "expr({left}) {operator} {right}"),
             Self::Whole {
                 left,
                 operator,
                 right,
-            } => write!(f, "{} {} {}", left, operator, right),
+            } => write!(f, "{left} {operator} {right}"),
         }
     }
 }

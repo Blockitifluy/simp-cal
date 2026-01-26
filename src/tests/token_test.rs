@@ -1,20 +1,6 @@
-use crate::{
-    operator::Operator,
-    token::{Token, parse_tokens, reduce_calculation},
-};
+use crate::token::{parse_tokens, reduce_calculation};
 
-const CALCULATION_EXAMPLE: &str = "1*23^2-2/0.5";
-const EXAMPLE_TOKENS: [Token; 9] = [
-    Token::Number(1.0),
-    Token::Operator(Operator::Mul),
-    Token::Number(23.0),
-    Token::Operator(Operator::Pow),
-    Token::Number(2.0),
-    Token::Operator(Operator::Sub),
-    Token::Number(2.0),
-    Token::Operator(Operator::Div),
-    Token::Number(0.5),
-];
+use super::examples::*;
 
 #[test]
 fn reduce_cal() {

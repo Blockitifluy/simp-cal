@@ -98,11 +98,14 @@ pub fn get_operator_in_tokens(tokens: &[Token]) -> Vec<(usize, Operator)> {
         .collect()
 }
 
+// TODO: Make algorthirm sort by binding power and order in calculation
+
 /// Sorts operators by it's binding power.
 /// # Arguements
 /// - `operators`: A mutable slice of `(usize, Operator)`
 pub fn sort_operators_by_binding(operators: &mut [(usize, Operator)]) {
     operators.sort_by(|a, b| {
-        (b.1.get_binding_power() - a.1.get_binding_power()).cmp(&a.1.get_binding_power())
+        let (a_bind, b_bind) = (a.1.get_binding_power(), b.1.get_binding_power());
+        (b_bind - a_bind).cmp(&a_bind)
     });
 }

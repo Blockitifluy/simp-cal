@@ -46,8 +46,6 @@ fn parse_calculation(buffer: &str, is_verbose: bool, is_eval: bool) -> Vec<Expre
             println!("{}", expr);
         }
     }
-
-    verbose!(is_verbose, "expr data: {:?}", exprs);
     exprs
 }
 
@@ -94,5 +92,7 @@ fn main() {
 
 #[cfg(test)]
 mod tests {
+    mod examples;
+    mod operator_test;
     mod token_test;
 }
