@@ -18,8 +18,7 @@ fn get_operants_operator_of_expr(
             operator,
             right,
         } => {
-            let r_val_null = results.get(*right);
-            let Some(r_val) = r_val_null else {
+            let Some(r_val) = results.get(*right) else {
                 return Err(EvalCalculationErr::UnorderedExpressions {
                     index: *right,
                     is_left: false,
@@ -33,8 +32,7 @@ fn get_operants_operator_of_expr(
             operator,
             right,
         } => {
-            let l_val_null = results.get(*left);
-            let Some(l_val) = l_val_null else {
+            let Some(l_val) = results.get(*left) else {
                 return Err(EvalCalculationErr::UnorderedExpressions {
                     index: *left,
                     is_left: true,
@@ -48,16 +46,14 @@ fn get_operants_operator_of_expr(
             operator,
             right,
         } => {
-            let l_val_null = results.get(*left);
-            let Some(l_val) = l_val_null else {
+            let Some(l_val) = results.get(*left) else {
                 return Err(EvalCalculationErr::UnorderedExpressions {
                     index: *right,
                     is_left: false,
                     expr: *expr,
                 });
             };
-            let r_val_null = results.get(*right);
-            let Some(r_val) = r_val_null else {
+            let Some(r_val) = results.get(*right) else {
                 return Err(EvalCalculationErr::UnorderedExpressions {
                     index: *right,
                     is_left: false,

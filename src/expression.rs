@@ -155,6 +155,7 @@ fn operation_in_cal_to_expr(
     oper: Operator,
     oper_len: usize,
 ) -> Result<Expression, ExpressionParsingError> {
+    // TODO: Add bracket support
     let (prev_token, next_token) = (tokens[place - 1], tokens[place + 1]);
 
     let Token::Number(prev) = prev_token else {

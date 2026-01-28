@@ -1,6 +1,6 @@
 //! Utility module, for searching for operators inside a collection of tokens.
 use crate::token::Token;
-use std::fmt;
+use std::{cmp::Ordering, fmt};
 
 /// An operator used in calculations.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -93,12 +93,10 @@ pub fn get_operator_in_tokens(tokens: &[Token]) -> Vec<(usize, Operator)> {
     tokens
         .iter()
         .enumerate()
-        .filter(|(_, t)| matches!(t, Token::Operator(_)))
+        .filter(|(_, t)| t.is_operator())
         .map(|(i, t)| (i, t.unwrap_operator()))
         .collect()
 }
-
-// TODO: Make algorthirm sort by binding power and order in calculation
 
 /// Sorts operators by it's binding power.
 /// # Arguements
@@ -106,6 +104,13 @@ pub fn get_operator_in_tokens(tokens: &[Token]) -> Vec<(usize, Operator)> {
 pub fn sort_operators_by_binding(operators: &mut [(usize, Operator)]) {
     operators.sort_by(|a, b| {
         let (a_bind, b_bind) = (a.1.get_binding_power(), b.1.get_binding_power());
-        (b_bind - a_bind).cmp(&a_bind)
+
+        let cmp = b_bind.partial_cmp(&a_bind).unwrap();
+        if cmp == Ordering::Equal {
+            let cmp = a.0.partial_cmp(&b.0).unwrap();
+            cmp
+        } else {
+            cmp
+        }
     });
 }

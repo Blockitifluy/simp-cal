@@ -11,6 +11,10 @@ pub enum Token {
     Number(f32),
     /// An operator
     Operator(Operator),
+    /// The start of the bracket
+    BracketStart,
+    /// The end of the bracket
+    BracketEnd,
 }
 impl Token {
     /// Unwraps _self_ into an `Operator`.
@@ -46,6 +50,21 @@ impl Token {
     pub fn is_number(&self) -> bool {
         matches!(self, Self::Number(_))
     }
+
+    /// Returns `true`, if `Token` is an start bracket.
+    pub fn is_bracket_start(&self) -> bool {
+        matches!(self, Self::BracketStart)
+    }
+
+    /// Returns `true`, if `Token` is an ending bracket.
+    pub fn is_bracket_end(&self) -> bool {
+        matches!(self, Self::BracketEnd)
+    }
+
+    /// Returns `true`, `Token` is any type of bracket.
+    pub fn is_bracket(&self) -> bool {
+        self.is_bracket_start() || self.is_bracket_end()
+    }
 }
 
 /// Parses the tokens of a calculation.
@@ -58,6 +77,7 @@ impl Token {
 pub fn parse_tokens(cal: &str) -> Result<Vec<Token>, TokenParseError> {
     let mut r: Vec<Token> = Vec::with_capacity(8);
     let mut b = String::with_capacity(16);
+    let mut hanging_bracket = false;
 
     macro_rules! parse_b {
         () => {
@@ -71,6 +91,18 @@ pub fn parse_tokens(cal: &str) -> Result<Vec<Token>, TokenParseError> {
     }
 
     for c in cal.chars() {
+        if c == '(' && !hanging_bracket {
+            hanging_bracket = true;
+            r.push(Token::BracketStart);
+            continue;
+        } else if c == ')' && hanging_bracket {
+            hanging_bracket = false;
+            r.push(Token::BracketEnd);
+            continue;
+        } else if c == ')' && !hanging_bracket {
+            return Err(TokenParseError::HangingBracket);
+        }
+
         let operator_null = Operator::get_operator_from_sign(c);
         let Some(operator) = operator_null else {
             b.push(c);
@@ -87,6 +119,9 @@ pub fn parse_tokens(cal: &str) -> Result<Vec<Token>, TokenParseError> {
         parse_b!();
     }
 
+    if hanging_bracket {
+        return Err(TokenParseError::HangingBracket);
+    }
     r.shrink_to_fit();
     Ok(r)
 }
@@ -94,11 +129,13 @@ pub fn parse_tokens(cal: &str) -> Result<Vec<Token>, TokenParseError> {
 #[derive(Debug)]
 pub enum TokenParseError {
     NumberParse { token: String },
+    HangingBracket,
 }
 impl fmt::Display for TokenParseError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::NumberParse { token } => write!(f, "couldn't parse {token} as a number"),
+            Self::HangingBracket => write!(f, "bracket hanging"),
         }
     }
 }
@@ -109,7 +146,7 @@ impl Error for TokenParseError {}
 /// # Arguements
 /// - `s`: calculation string
 /// # Returns
-/// A reduces calculation
+/// A reduced calculation
 /// # Example
 /// Input: `1 +   5 ^ 2`
 /// Output: `1+5^2`
