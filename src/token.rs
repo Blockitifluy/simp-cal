@@ -76,14 +76,14 @@ impl Token {
 /// - `Err`: A string
 pub fn parse_tokens(cal: &str) -> Result<Vec<Token>, TokenParseError> {
     let mut r: Vec<Token> = Vec::with_capacity(8);
-    let mut b = String::with_capacity(16);
-    let mut hanging_bracket = false;
+
+    let mut num_b = String::with_capacity(16);
+    let mut bracket_count = 0;
 
     macro_rules! parse_b {
         () => {
-            let num_ex = b.parse::<f32>();
-            let Ok(num) = num_ex else {
-                return Err(TokenParseError::NumberParse { token: b });
+            let Ok(num) = num_b.parse::<f32>() else {
+                return Err(TokenParseError::NumberParse { token: num_b });
             };
 
             r.push(Token::Number(num));
@@ -91,35 +91,39 @@ pub fn parse_tokens(cal: &str) -> Result<Vec<Token>, TokenParseError> {
     }
 
     for c in cal.chars() {
-        if c == '(' && !hanging_bracket {
-            hanging_bracket = true;
-            r.push(Token::BracketStart);
-            continue;
-        } else if c == ')' && hanging_bracket {
-            hanging_bracket = false;
-            r.push(Token::BracketEnd);
-            continue;
-        } else if c == ')' && !hanging_bracket {
-            return Err(TokenParseError::HangingBracket);
+        if c == ')' {
+            bracket_count += 1;
         }
 
-        let operator_null = Operator::get_operator_from_sign(c);
-        let Some(operator) = operator_null else {
-            b.push(c);
+        if c == '(' {
+            r.push(Token::BracketStart);
+        }
+
+        // operators and numbers
+        let Some(operator) = Operator::get_operator_from_sign(c) else {
+            if c.is_numeric() {
+                num_b.push(c);
+            }
             continue;
         };
 
         parse_b!();
-
+        if bracket_count > 0 {
+            bracket_count -= 1;
+            r.push(Token::BracketEnd);
+        }
         r.push(Token::Operator(operator));
-        b.clear();
+
+        num_b.clear();
     }
 
-    if !b.is_empty() {
+    if !num_b.is_empty() {
         parse_b!();
     }
 
-    if hanging_bracket {
+    if bracket_count == 1 {
+        r.push(Token::BracketEnd);
+    } else if bracket_count != 0 {
         return Err(TokenParseError::HangingBracket);
     }
     r.shrink_to_fit();

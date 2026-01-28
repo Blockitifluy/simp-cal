@@ -107,8 +107,7 @@ pub fn sort_operators_by_binding(operators: &mut [(usize, Operator)]) {
 
         let cmp = b_bind.partial_cmp(&a_bind).unwrap();
         if cmp == Ordering::Equal {
-            let cmp = a.0.partial_cmp(&b.0).unwrap();
-            cmp
+            a.0.partial_cmp(&b.0).unwrap()
         } else {
             cmp
         }

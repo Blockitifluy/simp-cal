@@ -3,7 +3,12 @@ use crate::{
     operator::{Operator, get_operator_in_tokens, sort_operators_by_binding},
     token::Token,
 };
-use std::{error::Error, fmt, ops::RangeInclusive};
+use std::{
+    collections::LinkedList,
+    error::Error,
+    fmt,
+    ops::{Range, RangeInclusive},
+};
 
 /// A part of a parsed calculation. Its partialness is based on it's neighbouring expressions and
 /// the operator's binding power.
@@ -184,6 +189,24 @@ fn operation_in_cal_to_expr(
     }
 }
 
+fn get_brackets(tokens: &[Token]) -> Option<Vec<Range<usize>>> {
+    let mut brackets: LinkedList<usize> = LinkedList::new(); // Maybe maybe
+    let mut r = Vec::with_capacity(8);
+
+    for (i, t) in tokens.iter().enumerate() {
+        if t.is_bracket_start() {
+            brackets.push_front(i);
+        } else if t.is_bracket_end() {
+            let start = brackets.pop_front()?;
+
+            let range = (start + 1)..i;
+            r.push(range);
+        }
+    }
+
+    Some(r)
+}
+
 /// Converts a `Token` slice into a vec of `Expression`s.
 /// # Arguements
 /// - `tokens`: a slice of `Token`s
@@ -193,14 +216,21 @@ pub fn tree_tokens(tokens: &[Token]) -> Result<Vec<Expression>, ExpressionParsin
     let mut operators = get_operator_in_tokens(tokens);
     sort_operators_by_binding(&mut operators);
 
+    let Some(brackets) = get_brackets(tokens) else {
+        return Err(ExpressionParsingError::HangingBracket);
+    };
+
+    println!("{:?}", brackets);
+
     let mut expressions = Vec::<Expression>::new();
     let mut taken_tokens = Vec::<ExprBind>::new();
 
-    for (i, (place, oper)) in operators.iter().enumerate() {
+    let operators_len = operators.len();
+    for (i, (place, oper)) in operators.into_iter().enumerate() {
         let expr: Expression =
-            operation_in_cal_to_expr(&taken_tokens, tokens, *place, *oper, operators.len())?;
+            operation_in_cal_to_expr(&taken_tokens, tokens, place, oper, operators_len)?;
 
-        let bind = ExprBind::new(i, *place);
+        let bind = ExprBind::new(i, place);
 
         expressions.push(expr);
         taken_tokens.push(bind);
@@ -212,6 +242,7 @@ pub fn tree_tokens(tokens: &[Token]) -> Result<Vec<Expression>, ExpressionParsin
 #[derive(Debug)]
 pub enum ExpressionParsingError {
     OperantNotNumber { left: bool, token: Token },
+    HangingBracket,
 }
 impl fmt::Display for ExpressionParsingError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -222,6 +253,9 @@ impl fmt::Display for ExpressionParsingError {
                     "{} token {token:?} is not a number",
                     if *left { "left" } else { "right" }
                 )
+            }
+            Self::HangingBracket => {
+                write!(f, "Hanging bracket")
             }
         }
     }
