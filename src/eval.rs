@@ -1,23 +1,15 @@
 //! Calculates a value
 use std::{error::Error, fmt};
 
-use crate::{expression::Expression, operator::Operator};
+use crate::expression::{Expression, ExpressionType};
 
 fn get_operants_operator_of_expr(
     expr: &Expression,
     results: &[f32],
-) -> Result<(f32, Operator, f32), EvalCalculationErr> {
-    match expr {
-        Expression::Whole {
-            left,
-            operator,
-            right,
-        } => Ok((*left, *operator, *right)),
-        Expression::Left {
-            left,
-            operator,
-            right,
-        } => {
+) -> Result<(f32, f32), EvalCalculationErr> {
+    match &expr.expr_type {
+        ExpressionType::Whole { left, right } => Ok((*left, *right)),
+        ExpressionType::Left { left, right } => {
             let Some(r_val) = results.get(*right) else {
                 return Err(EvalCalculationErr::UnorderedExpressions {
                     index: *right,
@@ -25,13 +17,9 @@ fn get_operants_operator_of_expr(
                     expr: *expr,
                 });
             };
-            Ok((*left, *operator, *r_val))
+            Ok((*left, *r_val))
         }
-        Expression::Right {
-            left,
-            operator,
-            right,
-        } => {
+        ExpressionType::Right { left, right } => {
             let Some(l_val) = results.get(*left) else {
                 return Err(EvalCalculationErr::UnorderedExpressions {
                     index: *left,
@@ -39,13 +27,9 @@ fn get_operants_operator_of_expr(
                     expr: *expr,
                 });
             };
-            Ok((*l_val, *operator, *right))
+            Ok((*l_val, *right))
         }
-        Expression::Op {
-            left,
-            operator,
-            right,
-        } => {
+        ExpressionType::Op { left, right } => {
             let Some(l_val) = results.get(*left) else {
                 return Err(EvalCalculationErr::UnorderedExpressions {
                     index: *right,
@@ -60,7 +44,7 @@ fn get_operants_operator_of_expr(
                     expr: *expr,
                 });
             };
-            Ok((*l_val, *operator, *r_val))
+            Ok((*l_val, *r_val))
         }
     }
 }
@@ -74,9 +58,9 @@ pub fn eval_calculation(exprs: &[Expression]) -> Result<f32, EvalCalculationErr>
     let mut results: Vec<f32> = Vec::with_capacity(16);
 
     for expr in exprs.iter() {
-        let (l_ant, operator, r_ant) = get_operants_operator_of_expr(expr, &results)?;
+        let (l_ant, r_ant) = get_operants_operator_of_expr(expr, &results)?;
 
-        let compute: f32 = operator.compute(l_ant, r_ant);
+        let compute: f32 = expr.operator.compute(l_ant, r_ant);
 
         results.push(compute);
     }

@@ -29,19 +29,33 @@ macro_rules! input {
     }};
 }
 
-fn parse_calculation(buffer: &str, is_verbose: bool, is_eval: bool) -> Vec<Expression> {
+#[derive(Clone, Copy, Debug)]
+struct ProgramFlags {
+    pub verbose: bool,
+    pub eval: bool,
+}
+impl Default for ProgramFlags {
+    fn default() -> Self {
+        Self {
+            verbose: false,
+            eval: true,
+        }
+    }
+}
+
+fn parse_calculation(buffer: &str, flags: &ProgramFlags) -> Vec<Expression> {
     let cal = reduce_calculation(buffer);
 
     // Parsing
 
-    verbose!(is_verbose, "# Parsing\ninput calculation: {}", cal);
+    verbose!(flags.verbose, "# Parsing\ninput calculation: {}", cal);
 
     let tokens = parse_tokens(&cal).unwrap();
-    verbose!(is_verbose, "tokens: {:?}", tokens);
+    verbose!(flags.verbose, "tokens: {:?}", tokens);
 
     let exprs = tree_tokens(&tokens).unwrap();
-    if is_verbose || !is_eval {
-        verbose!(is_verbose, "expressions:");
+    if flags.verbose || !flags.eval {
+        verbose!(flags.verbose, "expressions:");
         for expr in exprs.iter() {
             println!("{}", expr);
         }
@@ -49,23 +63,20 @@ fn parse_calculation(buffer: &str, is_verbose: bool, is_eval: bool) -> Vec<Expre
     exprs
 }
 
-fn calculate_buffer(buffer: &str, is_verbose: bool, is_eval: bool) {
-    let exprs = parse_calculation(buffer, is_verbose, is_eval);
-    if is_eval {
-        verbose!(is_verbose, "\n# Eval");
+fn calculate_buffer(buffer: &str, flags: &ProgramFlags) {
+    let exprs = parse_calculation(buffer, flags);
+    if flags.eval {
+        verbose!(flags.verbose, "\n# Eval");
 
         let eval_result = eval_calculation(&exprs).unwrap();
         println!("{}", eval_result);
     }
 }
 
-fn main() {
-    let args: Vec<String> = env::args().collect();
-
-    let mut is_verbose: bool = false;
-    let mut is_eval = true;
-
+fn parse_args(args: Vec<String>) -> (ProgramFlags, Vec<String>) {
+    let mut flags = ProgramFlags::default();
     let mut positional_args = Vec::new();
+
     for (i, arg) in args.into_iter().enumerate() {
         if i == 0 {
             continue;
@@ -73,19 +84,26 @@ fn main() {
 
         let arg_slice = (&arg) as &str;
         match arg_slice {
-            "-v" | "--verbose" => is_verbose = true,
-            "--no-eval" => is_eval = false,
+            "-v" | "--verbose" => flags.verbose = true,
+            "--no-eval" => flags.eval = false,
             _ => positional_args.push(arg),
         }
     }
 
+    (flags, positional_args)
+}
+
+fn main() {
+    let args: Vec<String> = env::args().collect();
+    let (flags, positional_args) = parse_args(args);
+
     if positional_args.is_empty() {
         let buffer = input!();
 
-        calculate_buffer(&buffer, is_verbose, is_eval);
+        calculate_buffer(&buffer, &flags);
     } else {
         for cal in positional_args {
-            calculate_buffer(&cal, is_verbose, is_eval);
+            calculate_buffer(&cal, &flags);
         }
     }
 }

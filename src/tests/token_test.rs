@@ -31,9 +31,15 @@ fn is_type() {
 
     for (i, tok) in tokens.into_iter().enumerate() {
         if i % 2 == 0 {
-            assert_eq!(tok.is_number(), EXAMPLE_TOKENS[i].is_number())
+            assert_eq!(
+                tok.token_type.is_number(),
+                EXAMPLE_TOKENS[i].token_type.is_number()
+            )
         } else {
-            assert_eq!(tok.is_operator(), EXAMPLE_TOKENS[i].is_operator())
+            assert_eq!(
+                tok.token_type.is_operator(),
+                EXAMPLE_TOKENS[i].token_type.is_operator()
+            )
         }
     }
 }
@@ -44,9 +50,15 @@ fn unwrap_type() {
 
     for (i, tok) in tokens.iter().enumerate() {
         if i % 2 == 0 {
-            assert_eq!(tok.unwrap_number(), EXAMPLE_TOKENS[i].unwrap_number())
+            assert_eq!(
+                tok.token_type.unwrap_number(),
+                EXAMPLE_TOKENS[i].token_type.unwrap_number()
+            )
         } else {
-            assert_eq!(tok.unwrap_operator(), EXAMPLE_TOKENS[i].unwrap_operator())
+            assert_eq!(
+                tok.token_type.unwrap_operator(),
+                EXAMPLE_TOKENS[i].token_type.unwrap_operator()
+            )
         }
     }
 }
@@ -55,12 +67,12 @@ fn unwrap_type() {
 #[should_panic]
 fn unwrap_number_panic() {
     let tokens = parse_tokens("1+1").unwrap();
-    tokens[1].unwrap_number();
+    tokens[1].token_type.unwrap_number();
 }
 
 #[test]
 #[should_panic]
 fn unwrap_operator_panic() {
     let tokens = parse_tokens("1+1").unwrap();
-    tokens[0].unwrap_operator();
+    tokens[0].token_type.unwrap_operator();
 }

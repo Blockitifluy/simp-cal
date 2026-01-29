@@ -1,7 +1,7 @@
 //! Handles converting tokens into expressions for evalulation a calculation.
 use crate::{
-    operator::{Operator, get_operator_in_tokens, sort_operators_by_binding},
-    token::Token,
+    operator::{Operator, get_operator_in_tokens, sort_operators_by_context},
+    token::{Token, TokenType},
 };
 use std::{
     collections::LinkedList,
@@ -10,16 +10,48 @@ use std::{
     ops::{Range, RangeInclusive},
 };
 
+#[derive(Debug, Clone, Copy)]
+pub struct Expression {
+    pub operator: Operator,
+    pub bracket_count: i32,
+    pub expr_type: ExpressionType,
+}
+impl Expression {
+    pub const fn new(operator: Operator, bracket_count: i32, expr_type: ExpressionType) -> Self {
+        Self {
+            operator,
+            bracket_count,
+            expr_type,
+        }
+    }
+}
+
+impl fmt::Display for Expression {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let operator = &self.operator;
+        match self.expr_type {
+            ExpressionType::Op { left, right } => {
+                write!(f, "expr({left}) {operator} expr({right})")
+            }
+            ExpressionType::Left { left, right } => {
+                write!(f, "{left} {operator} expr({right})")
+            }
+            ExpressionType::Right { left, right } => {
+                write!(f, "expr({left}) {operator} {right}")
+            }
+            ExpressionType::Whole { left, right } => write!(f, "{left} {operator} {right}"),
+        }
+    }
+}
+
 /// A part of a parsed calculation. Its partialness is based on it's neighbouring expressions and
 /// the operator's binding power.
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub enum Expression {
+pub enum ExpressionType {
     /// An expression with only it's operator owned.
     Op {
         /// Left operant (not owned)
         left: usize,
-        /// Operator
-        operator: Operator,
         /// Right operant (not owned)
         right: usize,
     },
@@ -27,8 +59,6 @@ pub enum Expression {
     Left {
         /// Left operant
         left: f32,
-        /// Operator
-        operator: Operator,
         /// Right operant (not owned)
         right: usize,
     },
@@ -36,8 +66,6 @@ pub enum Expression {
     Right {
         /// Left operant (not owned)
         left: usize,
-        /// Operator
-        operator: Operator,
         /// Right operant
         right: f32,
     },
@@ -45,37 +73,9 @@ pub enum Expression {
     Whole {
         /// Left operant
         left: f32,
-        /// Operator
-        operator: Operator,
         /// Right operant
         right: f32,
     },
-}
-impl fmt::Display for Expression {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Op {
-                left,
-                operator,
-                right,
-            } => write!(f, "expr({left}) {operator} expr({right})"),
-            Self::Left {
-                left,
-                operator,
-                right,
-            } => write!(f, "{left} {operator} expr({right})"),
-            Self::Right {
-                operator,
-                right,
-                left,
-            } => write!(f, "expr({left}) {operator} {right}"),
-            Self::Whole {
-                left,
-                operator,
-                right,
-            } => write!(f, "{left} {operator} {right}"),
-        }
-    }
 }
 
 #[derive(Debug, Clone)]
@@ -93,31 +93,26 @@ impl ExprBind {
 }
 
 fn get_expression_type(
-    oper: Operator,
     prev: f32,
     next: f32,
     prev_oper: Option<usize>,
     next_oper: Option<usize>,
-) -> Expression {
+) -> ExpressionType {
     match (prev_oper, next_oper) {
-        (None, None) => Expression::Whole {
+        (None, None) => ExpressionType::Whole {
             left: prev,
-            operator: oper,
             right: next,
         },
-        (None, Some(r_expr)) => Expression::Left {
+        (None, Some(r_expr)) => ExpressionType::Left {
             left: prev,
-            operator: oper,
             right: r_expr,
         },
-        (Some(l_expr), None) => Expression::Right {
+        (Some(l_expr), None) => ExpressionType::Right {
             left: l_expr,
-            operator: oper,
             right: next,
         },
-        (Some(l_expr), Some(r_expr)) => Expression::Op {
+        (Some(l_expr), Some(r_expr)) => ExpressionType::Op {
             left: l_expr,
-            operator: oper,
             right: r_expr,
         },
     }
@@ -156,36 +151,46 @@ fn get_neighbouring_expressions(
 fn operation_in_cal_to_expr(
     taken_tokens: &[ExprBind],
     tokens: &[Token],
+    brackets: &[Range<usize>],
     place: usize,
     oper: Operator,
     oper_len: usize,
+    i: usize,
 ) -> Result<Expression, ExpressionParsingError> {
     // TODO: Add bracket support
     let (prev_token, next_token) = (tokens[place - 1], tokens[place + 1]);
 
-    let Token::Number(prev) = prev_token else {
+    let TokenType::Number(prev) = prev_token.token_type else {
         return Err(ExpressionParsingError::OperantNotNumber {
             left: true,
             token: prev_token,
         });
     };
-    let Token::Number(next) = next_token else {
+    let TokenType::Number(next) = next_token.token_type else {
         return Err(ExpressionParsingError::OperantNotNumber {
             left: false,
             token: next_token,
         });
     };
 
+    let bracket_count = get_bracket_count_of_index(i, brackets);
     if taken_tokens.is_empty() {
-        Ok(Expression::Whole {
-            left: prev,
-            operator: oper,
-            right: next,
-        })
+        Ok(Expression::new(
+            oper,
+            bracket_count,
+            ExpressionType::Whole {
+                left: prev,
+                right: next,
+            },
+        ))
     } else {
         let (prev_expr, next_expr) = get_neighbouring_expressions(place, taken_tokens, oper_len);
 
-        Ok(get_expression_type(oper, prev, next, prev_expr, next_expr))
+        Ok(Expression::new(
+            oper,
+            bracket_count,
+            get_expression_type(prev, next, prev_expr, next_expr),
+        ))
     }
 }
 
@@ -194,9 +199,9 @@ fn get_brackets(tokens: &[Token]) -> Option<Vec<Range<usize>>> {
     let mut r = Vec::with_capacity(8);
 
     for (i, t) in tokens.iter().enumerate() {
-        if t.is_bracket_start() {
+        if t.token_type.is_bracket_start() {
             brackets.push_front(i);
-        } else if t.is_bracket_end() {
+        } else if t.token_type.is_bracket_end() {
             let start = brackets.pop_front()?;
 
             let range = (start + 1)..i;
@@ -207,18 +212,28 @@ fn get_brackets(tokens: &[Token]) -> Option<Vec<Range<usize>>> {
     Some(r)
 }
 
+fn get_bracket_count_of_index(i: usize, brackets: &[Range<usize>]) -> i32 {
+    let mut count = 0;
+    for r in brackets {
+        if r.contains(&i) {
+            count += 1;
+        }
+    }
+    count
+}
+
 /// Converts a `Token` slice into a vec of `Expression`s.
 /// # Arguements
 /// - `tokens`: a slice of `Token`s
 /// # Returns
 /// A vec of `Expression`s.
 pub fn tree_tokens(tokens: &[Token]) -> Result<Vec<Expression>, ExpressionParsingError> {
-    let mut operators = get_operator_in_tokens(tokens);
-    sort_operators_by_binding(&mut operators);
-
     let Some(brackets) = get_brackets(tokens) else {
         return Err(ExpressionParsingError::HangingBracket);
     };
+
+    let mut operators = get_operator_in_tokens(tokens);
+    sort_operators_by_context(&mut operators);
 
     println!("{:?}", brackets);
 
@@ -227,8 +242,16 @@ pub fn tree_tokens(tokens: &[Token]) -> Result<Vec<Expression>, ExpressionParsin
 
     let operators_len = operators.len();
     for (i, (place, oper)) in operators.into_iter().enumerate() {
-        let expr: Expression =
-            operation_in_cal_to_expr(&taken_tokens, tokens, place, oper, operators_len)?;
+        // TODO:
+        let expr: Expression = operation_in_cal_to_expr(
+            &taken_tokens,
+            tokens,
+            &brackets,
+            place,
+            oper,
+            operators_len,
+            i,
+        )?;
 
         let bind = ExprBind::new(i, place);
 

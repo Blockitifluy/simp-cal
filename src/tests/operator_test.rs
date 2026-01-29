@@ -1,4 +1,4 @@
-use crate::operator::{Operator, get_operator_in_tokens, sort_operators_by_binding};
+use crate::operator::{Operator, get_operator_in_tokens, sort_operators_by_context};
 
 use super::examples::*;
 
@@ -51,7 +51,7 @@ fn operators_in_tokens() {
 #[test]
 fn sort_operators() {
     let mut operators = get_operator_in_tokens(&EXAMPLE_TOKENS);
-    sort_operators_by_binding(&mut operators);
+    sort_operators_by_context(&mut operators);
 
     assert_eq!(operators, EXAMPLE_OPERATORS_INDEX_SORT)
 }

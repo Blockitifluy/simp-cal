@@ -1,4 +1,7 @@
-use crate::{operator::Operator, token::Token};
+use crate::{
+    operator::Operator,
+    token::{Token, TokenType},
+};
 
 pub const CALCULATION_EXAMPLE: &str = "1*23^2-2/0.5+100";
 
@@ -6,17 +9,17 @@ pub const CALCULATION_EXAMPLE: &str = "1*23^2-2/0.5+100";
 pub const EXAMPLE_RESULT: f32 = 104.0;
 
 pub const EXAMPLE_TOKENS: [Token; 11] = [
-    Token::Number(1.0),
-    Token::Operator(Operator::Mul),
-    Token::Number(23.0),
-    Token::Operator(Operator::Pow),
-    Token::Number(2.0),
-    Token::Operator(Operator::Sub),
-    Token::Number(2.0),
-    Token::Operator(Operator::Div),
-    Token::Number(0.5),
-    Token::Operator(Operator::Add),
-    Token::Number(100.0),
+    Token::new(0, TokenType::Number(1.0)),
+    Token::new(0, TokenType::Operator(Operator::Mul)),
+    Token::new(0, TokenType::Number(23.0)),
+    Token::new(0, TokenType::Operator(Operator::Pow)),
+    Token::new(0, TokenType::Number(2.0)),
+    Token::new(0, TokenType::Operator(Operator::Sub)),
+    Token::new(0, TokenType::Number(2.0)),
+    Token::new(0, TokenType::Operator(Operator::Div)),
+    Token::new(0, TokenType::Number(0.5)),
+    Token::new(0, TokenType::Operator(Operator::Add)),
+    Token::new(0, TokenType::Number(100.0)),
 ];
 
 pub const EXAMPLE_OPERATOR_INDEX: [(usize, Operator); 5] = [
@@ -29,8 +32,8 @@ pub const EXAMPLE_OPERATOR_INDEX: [(usize, Operator); 5] = [
 
 pub const EXAMPLE_OPERATORS_INDEX_SORT: [(usize, Operator); 5] = [
     (3, Operator::Pow),
-    (7, Operator::Div),
     (1, Operator::Mul),
+    (7, Operator::Div),
     (5, Operator::Sub),
     (9, Operator::Add),
 ];

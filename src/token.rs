@@ -6,7 +6,18 @@ use crate::operator::Operator;
 
 /// Represents a piece of data inside of a calculation.
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub enum Token {
+pub struct Token {
+    pub bracket_count: i32,
+    pub token_type: TokenType,
+}
+impl Token {
+    pub const fn new(bracket_count: i32, token_type: TokenType) -> Self {
+        Self { bracket_count, token_type}
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum TokenType {
     /// A single number
     Number(f32),
     /// An operator
@@ -16,7 +27,7 @@ pub enum Token {
     /// The end of the bracket
     BracketEnd,
 }
-impl Token {
+impl TokenType {
     /// Unwraps _self_ into an `Operator`.
     /// # Returns
     /// An `Operator`
@@ -86,7 +97,7 @@ pub fn parse_tokens(cal: &str) -> Result<Vec<Token>, TokenParseError> {
                 return Err(TokenParseError::NumberParse { token: num_b });
             };
 
-            r.push(Token::Number(num));
+            r.push(Token::new(bracket_count, TokenType::Number(num)));
         };
     }
 
@@ -96,12 +107,12 @@ pub fn parse_tokens(cal: &str) -> Result<Vec<Token>, TokenParseError> {
         }
 
         if c == '(' {
-            r.push(Token::BracketStart);
+            r.push(Token::new(bracket_count, TokenType::BracketStart));
         }
 
         // operators and numbers
         let Some(operator) = Operator::get_operator_from_sign(c) else {
-            if c.is_numeric() {
+            if c.is_numeric() || c == '.' {
                 num_b.push(c);
             }
             continue;
@@ -109,10 +120,11 @@ pub fn parse_tokens(cal: &str) -> Result<Vec<Token>, TokenParseError> {
 
         parse_b!();
         if bracket_count > 0 {
+            r.push(Token::new(bracket_count, TokenType::BracketEnd));
             bracket_count -= 1;
-            r.push(Token::BracketEnd);
         }
-        r.push(Token::Operator(operator));
+
+        r.push(Token::new(bracket_count, TokenType::Operator(operator)));
 
         num_b.clear();
     }
@@ -122,7 +134,7 @@ pub fn parse_tokens(cal: &str) -> Result<Vec<Token>, TokenParseError> {
     }
 
     if bracket_count == 1 {
-        r.push(Token::BracketEnd);
+        r.push(Token::new(1, TokenType::BracketEnd));
     } else if bracket_count != 0 {
         return Err(TokenParseError::HangingBracket);
     }
@@ -165,3 +177,14 @@ pub fn reduce_calculation(s: &str) -> String {
     }
     r
 }
+
+// pub fn get_neighboring_number_tokens(tokens: &[Token], i: usize) -> (Option<usize>, Option<usize>) {
+//     let mut token_iter = tokens.iter().enumerate();
+//
+//     let (prev_i, next_i) = (
+//         token_iter.rposition(|(j, t)| t.is_number() && j < i),
+//         token_iter.position(|(j, t)| t.is_number() && j > i),
+//     );
+//
+//     (prev_i, next_i)
+// }
