@@ -1,5 +1,5 @@
 //! Utility module, for searching for operators inside a collection of tokens.
-use crate::token::Token;
+use crate::token::{Token, TokenType};
 use std::{cmp::Ordering, fmt};
 
 /// An operator used in calculations.
@@ -84,25 +84,53 @@ impl fmt::Display for Operator {
     }
 }
 
+#[derive(Debug, PartialEq)]
+pub struct ProcessedOperator {
+    pub bracket_count: i32,
+    pub operator: Operator,
+    pub index: usize,
+}
+impl ProcessedOperator {
+    pub const fn new(bracket_count: i32, operator: Operator, index: usize) -> Self {
+        Self {
+            bracket_count,
+            operator,
+            index,
+        }
+    }
+}
+
 /// Gets all the operators in a token slice.
 /// # Arguements
 /// - `tokens`: a slice of tokens
 /// # Returns
 /// A vec of the index of the operators and operator.
-pub fn get_operator_in_tokens(tokens: &[Token]) -> Vec<(usize, Operator)> {
+pub fn get_operator_in_tokens(tokens: &[Token]) -> Vec<ProcessedOperator> {
     tokens
         .iter()
         .enumerate()
-        .filter(|(_, t)| t.token_type.is_operator())
-        .map(|(i, t)| (i, t.token_type.unwrap_operator()))
+        .filter_map(|(i, t)| {
+            let TokenType::Operator(op) = t.token_type else {
+                return None;
+            };
+            Some(ProcessedOperator::new(t.bracket_count, op, i))
+        })
         .collect()
 }
 
 /// Sorts operators by it's binding power and bracket count.
 /// # Arguements
 /// - `operators`: A mutable slice of `(usize, Operator)`
-pub fn sort_operators_by_context(operators: &mut [(usize, Operator)]) {
-    operators.sort_by(|(a_i, a_oper), (b_i, b_oper)| {
+pub fn sort_operators_by_context(operators: &mut [ProcessedOperator]) {
+    operators.sort_by(|a, b| {
+        let (a_oper, a_i) = (a.operator, a.index);
+        let (b_oper, b_i) = (b.operator, b.index);
+
+        let brack_cmp = b.bracket_count.partial_cmp(&a.bracket_count).unwrap();
+        if brack_cmp != Ordering::Equal {
+            return brack_cmp;
+        }
+
         let (a_bind, b_bind) = (a_oper.get_binding_power(), b_oper.get_binding_power());
 
         let bind_cmp = b_bind.partial_cmp(&a_bind).unwrap();

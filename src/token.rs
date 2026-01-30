@@ -12,7 +12,10 @@ pub struct Token {
 }
 impl Token {
     pub const fn new(bracket_count: i32, token_type: TokenType) -> Self {
-        Self { bracket_count, token_type}
+        Self {
+            bracket_count,
+            token_type,
+        }
     }
 }
 
@@ -93,21 +96,30 @@ pub fn parse_tokens(cal: &str) -> Result<Vec<Token>, TokenParseError> {
 
     macro_rules! parse_b {
         () => {
-            let Ok(num) = num_b.parse::<f32>() else {
-                return Err(TokenParseError::NumberParse { token: num_b });
-            };
+            if !num_b.is_empty() {
+                let Ok(num) = num_b.parse::<f32>() else {
+                    return Err(TokenParseError::NumberParse { token: num_b });
+                };
 
-            r.push(Token::new(bracket_count, TokenType::Number(num)));
+                r.push(Token::new(bracket_count, TokenType::Number(num)));
+                num_b.clear();
+            }
         };
     }
 
     for c in cal.chars() {
         if c == ')' {
-            bracket_count += 1;
+            parse_b!();
+
+            r.push(Token::new(bracket_count, TokenType::BracketEnd));
+            bracket_count -= 1;
+            continue;
         }
 
         if c == '(' {
+            bracket_count += 1;
             r.push(Token::new(bracket_count, TokenType::BracketStart));
+            continue;
         }
 
         // operators and numbers
@@ -118,24 +130,16 @@ pub fn parse_tokens(cal: &str) -> Result<Vec<Token>, TokenParseError> {
             continue;
         };
 
+        let local_b_count = bracket_count;
+
         parse_b!();
-        if bracket_count > 0 {
-            r.push(Token::new(bracket_count, TokenType::BracketEnd));
-            bracket_count -= 1;
-        }
-
-        r.push(Token::new(bracket_count, TokenType::Operator(operator)));
-
-        num_b.clear();
+        r.push(Token::new(local_b_count, TokenType::Operator(operator)));
     }
 
-    if !num_b.is_empty() {
-        parse_b!();
-    }
+    parse_b!();
 
-    if bracket_count == 1 {
-        r.push(Token::new(1, TokenType::BracketEnd));
-    } else if bracket_count != 0 {
+    if bracket_count != 0 {
+        eprintln!("{:?}", r);
         return Err(TokenParseError::HangingBracket);
     }
     r.shrink_to_fit();

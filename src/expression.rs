@@ -204,7 +204,7 @@ fn get_brackets(tokens: &[Token]) -> Option<Vec<Range<usize>>> {
         } else if t.token_type.is_bracket_end() {
             let start = brackets.pop_front()?;
 
-            let range = (start + 1)..i;
+            let range = start..(i + 1);
             r.push(range);
         }
     }
@@ -235,25 +235,26 @@ pub fn tree_tokens(tokens: &[Token]) -> Result<Vec<Expression>, ExpressionParsin
     let mut operators = get_operator_in_tokens(tokens);
     sort_operators_by_context(&mut operators);
 
-    println!("{:?}", brackets);
+    println!("brackets: {:?}", brackets);
+    println!("operators: {:?}", operators);
 
     let mut expressions = Vec::<Expression>::new();
     let mut taken_tokens = Vec::<ExprBind>::new();
 
     let operators_len = operators.len();
-    for (i, (place, oper)) in operators.into_iter().enumerate() {
+    for (i, proc_op) in operators.into_iter().enumerate() {
         // TODO:
         let expr: Expression = operation_in_cal_to_expr(
             &taken_tokens,
             tokens,
             &brackets,
-            place,
-            oper,
+            proc_op.index,
+            proc_op.operator,
             operators_len,
             i,
         )?;
 
-        let bind = ExprBind::new(i, place);
+        let bind = ExprBind::new(i, proc_op.index);
 
         expressions.push(expr);
         taken_tokens.push(bind);

@@ -1,5 +1,5 @@
 use crate::{
-    operator::Operator,
+    operator::{Operator, ProcessedOperator},
     token::{Token, TokenType},
 };
 
@@ -22,18 +22,18 @@ pub const EXAMPLE_TOKENS: [Token; 11] = [
     Token::new(0, TokenType::Number(100.0)),
 ];
 
-pub const EXAMPLE_OPERATOR_INDEX: [(usize, Operator); 5] = [
-    (1, Operator::Mul),
-    (3, Operator::Pow),
-    (5, Operator::Sub),
-    (7, Operator::Div),
-    (9, Operator::Add),
+pub const EXAMPLE_OPERATOR_INDEX: [ProcessedOperator; 5] = [
+    ProcessedOperator::new(0, Operator::Mul, 1),
+    ProcessedOperator::new(0, Operator::Pow, 3),
+    ProcessedOperator::new(0, Operator::Sub, 5),
+    ProcessedOperator::new(0, Operator::Div, 7),
+    ProcessedOperator::new(0, Operator::Add, 9),
 ];
 
-pub const EXAMPLE_OPERATORS_INDEX_SORT: [(usize, Operator); 5] = [
-    (3, Operator::Pow),
-    (1, Operator::Mul),
-    (7, Operator::Div),
-    (5, Operator::Sub),
-    (9, Operator::Add),
+pub const EXAMPLE_OPERATORS_INDEX_SORT: [ProcessedOperator; 5] = [
+    ProcessedOperator::new(0, Operator::Pow, 3),
+    ProcessedOperator::new(0, Operator::Mul, 1),
+    ProcessedOperator::new(0, Operator::Div, 7),
+    ProcessedOperator::new(0, Operator::Sub, 5),
+    ProcessedOperator::new(0, Operator::Add, 9),
 ];
