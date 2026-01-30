@@ -104,8 +104,10 @@ pub fn parse_tokens(cal: &str) -> Result<Vec<Token>, TokenParseError> {
         let Some(operator) = Operator::get_operator_from_sign(c) else {
             if c.is_numeric() || c == '.' {
                 num_b.push(c);
+                continue;
             }
-            continue;
+
+            return Err(TokenParseError::InvalidCharacter { character: c });
         };
 
         let local_b_count = bracket_count;
@@ -128,12 +130,14 @@ pub fn parse_tokens(cal: &str) -> Result<Vec<Token>, TokenParseError> {
 pub enum TokenParseError {
     NumberParse { token: String },
     HangingBracket,
+    InvalidCharacter { character: char },
 }
 impl fmt::Display for TokenParseError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::NumberParse { token } => write!(f, "couldn't parse {token} as a number"),
             Self::HangingBracket => write!(f, "bracket hanging"),
+            Self::InvalidCharacter { character } => write!(f, "invalid character {character}"),
         }
     }
 }
@@ -159,14 +163,3 @@ pub fn reduce_calculation(s: &str) -> String {
     }
     r
 }
-
-// pub fn get_neighboring_number_tokens(tokens: &[Token], i: usize) -> (Option<usize>, Option<usize>) {
-//     let mut token_iter = tokens.iter().enumerate();
-//
-//     let (prev_i, next_i) = (
-//         token_iter.rposition(|(j, t)| t.is_number() && j < i),
-//         token_iter.position(|(j, t)| t.is_number() && j > i),
-//     );
-//
-//     (prev_i, next_i)
-// }

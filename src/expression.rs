@@ -186,6 +186,33 @@ fn operation_in_cal_to_expr(
     }
 }
 
+fn add_to_taken_tokens(taken_tokens: &mut Vec<ExprBind>, bind: ExprBind) {
+    if taken_tokens.is_empty() {
+        taken_tokens.push(bind);
+        return;
+    }
+
+    let Some(other_bind_i) = taken_tokens
+        .iter()
+        .position(|b| b.range.contains(bind.range.start()) || b.range.contains(bind.range.end()))
+    else {
+        taken_tokens.push(bind);
+        return;
+    };
+
+    let Some(bind_mut) = taken_tokens.get_mut(other_bind_i) else {
+        unreachable!()
+    };
+
+    let (a_start, a_end) = (*bind.range.start(), *bind.range.end());
+    let (b_start, b_end) = (*bind_mut.range.start(), *bind_mut.range.end());
+
+    let (new_start, new_end) = (a_start.min(b_start), a_end.max(b_end));
+
+    bind_mut.range = new_start..=new_end;
+    bind_mut.by = bind.by;
+}
+
 /// Converts a `Token` slice into a vec of `Expression`s.
 /// # Arguements
 /// - `tokens`: a slice of `Token`s
@@ -207,7 +234,7 @@ pub fn tree_tokens(tokens: &[Token]) -> Result<Vec<Expression>, ExpressionParsin
         let bind = ExprBind::new(i, proc_op.index);
 
         expressions.push(expr);
-        taken_tokens.push(bind);
+        add_to_taken_tokens(&mut taken_tokens, bind);
     }
 
     Ok(expressions)

@@ -11,7 +11,7 @@ This project parses a calculation into expressions, and then evalulates it.
 - [x] tokenization
 - [x] expression parsing
 - [x] evalulation
-- [ ] brackets
+- [x] brackets
 - [ ] negative numbers
 - [ ] 100% test coverage
 - [ ] substitution

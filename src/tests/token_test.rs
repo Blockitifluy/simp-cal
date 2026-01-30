@@ -19,10 +19,11 @@ fn tokenize_cal() {
 }
 
 #[test]
-fn parse_number_err() {
+#[should_panic]
+fn parse_number_panic() {
     let input: &str = "1*err^2-2";
 
-    parse_tokens(input).unwrap_err().to_string();
+    println!("{:?}", parse_tokens(input).unwrap());
 }
 
 #[test]
