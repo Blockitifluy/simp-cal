@@ -25,10 +25,6 @@ pub enum TokenType {
     Number(f32),
     /// An operator
     Operator(Operator),
-    /// The start of the bracket
-    BracketStart,
-    /// The end of the bracket
-    BracketEnd,
 }
 impl TokenType {
     /// Unwraps _self_ into an `Operator`.
@@ -64,21 +60,6 @@ impl TokenType {
     pub fn is_number(&self) -> bool {
         matches!(self, Self::Number(_))
     }
-
-    /// Returns `true`, if `Token` is an start bracket.
-    pub fn is_bracket_start(&self) -> bool {
-        matches!(self, Self::BracketStart)
-    }
-
-    /// Returns `true`, if `Token` is an ending bracket.
-    pub fn is_bracket_end(&self) -> bool {
-        matches!(self, Self::BracketEnd)
-    }
-
-    /// Returns `true`, `Token` is any type of bracket.
-    pub fn is_bracket(&self) -> bool {
-        self.is_bracket_start() || self.is_bracket_end()
-    }
 }
 
 /// Parses the tokens of a calculation.
@@ -110,15 +91,12 @@ pub fn parse_tokens(cal: &str) -> Result<Vec<Token>, TokenParseError> {
     for c in cal.chars() {
         if c == ')' {
             parse_b!();
-
-            r.push(Token::new(bracket_count, TokenType::BracketEnd));
             bracket_count -= 1;
             continue;
         }
 
         if c == '(' {
             bracket_count += 1;
-            r.push(Token::new(bracket_count, TokenType::BracketStart));
             continue;
         }
 

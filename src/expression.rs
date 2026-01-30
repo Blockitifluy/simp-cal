@@ -1,14 +1,9 @@
 //! Handles converting tokens into expressions for evalulation a calculation.
 use crate::{
-    operator::{Operator, get_operator_in_tokens, sort_operators_by_context},
+    operator::{Operator, ProcessedOperator, get_operator_in_tokens, sort_operators_by_context},
     token::{Token, TokenType},
 };
-use std::{
-    collections::LinkedList,
-    error::Error,
-    fmt,
-    ops::{Range, RangeInclusive},
-};
+use std::{error::Error, fmt, ops::RangeInclusive};
 
 #[derive(Debug, Clone, Copy)]
 pub struct Expression {
@@ -151,13 +146,11 @@ fn get_neighbouring_expressions(
 fn operation_in_cal_to_expr(
     taken_tokens: &[ExprBind],
     tokens: &[Token],
-    brackets: &[Range<usize>],
-    place: usize,
-    oper: Operator,
+    proc_oper: &ProcessedOperator,
     oper_len: usize,
-    i: usize,
 ) -> Result<Expression, ExpressionParsingError> {
     // TODO: Add bracket support
+    let place = &proc_oper.index;
     let (prev_token, next_token) = (tokens[place - 1], tokens[place + 1]);
 
     let TokenType::Number(prev) = prev_token.token_type else {
@@ -173,53 +166,24 @@ fn operation_in_cal_to_expr(
         });
     };
 
-    let bracket_count = get_bracket_count_of_index(i, brackets);
     if taken_tokens.is_empty() {
         Ok(Expression::new(
-            oper,
-            bracket_count,
+            proc_oper.operator,
+            proc_oper.bracket_count,
             ExpressionType::Whole {
                 left: prev,
                 right: next,
             },
         ))
     } else {
-        let (prev_expr, next_expr) = get_neighbouring_expressions(place, taken_tokens, oper_len);
+        let (prev_expr, next_expr) = get_neighbouring_expressions(*place, taken_tokens, oper_len);
 
         Ok(Expression::new(
-            oper,
-            bracket_count,
+            proc_oper.operator,
+            proc_oper.bracket_count,
             get_expression_type(prev, next, prev_expr, next_expr),
         ))
     }
-}
-
-fn get_brackets(tokens: &[Token]) -> Option<Vec<Range<usize>>> {
-    let mut brackets: LinkedList<usize> = LinkedList::new(); // Maybe maybe
-    let mut r = Vec::with_capacity(8);
-
-    for (i, t) in tokens.iter().enumerate() {
-        if t.token_type.is_bracket_start() {
-            brackets.push_front(i);
-        } else if t.token_type.is_bracket_end() {
-            let start = brackets.pop_front()?;
-
-            let range = start..(i + 1);
-            r.push(range);
-        }
-    }
-
-    Some(r)
-}
-
-fn get_bracket_count_of_index(i: usize, brackets: &[Range<usize>]) -> i32 {
-    let mut count = 0;
-    for r in brackets {
-        if r.contains(&i) {
-            count += 1;
-        }
-    }
-    count
 }
 
 /// Converts a `Token` slice into a vec of `Expression`s.
@@ -228,15 +192,8 @@ fn get_bracket_count_of_index(i: usize, brackets: &[Range<usize>]) -> i32 {
 /// # Returns
 /// A vec of `Expression`s.
 pub fn tree_tokens(tokens: &[Token]) -> Result<Vec<Expression>, ExpressionParsingError> {
-    let Some(brackets) = get_brackets(tokens) else {
-        return Err(ExpressionParsingError::HangingBracket);
-    };
-
     let mut operators = get_operator_in_tokens(tokens);
     sort_operators_by_context(&mut operators);
-
-    println!("brackets: {:?}", brackets);
-    println!("operators: {:?}", operators);
 
     let mut expressions = Vec::<Expression>::new();
     let mut taken_tokens = Vec::<ExprBind>::new();
@@ -244,15 +201,8 @@ pub fn tree_tokens(tokens: &[Token]) -> Result<Vec<Expression>, ExpressionParsin
     let operators_len = operators.len();
     for (i, proc_op) in operators.into_iter().enumerate() {
         // TODO:
-        let expr: Expression = operation_in_cal_to_expr(
-            &taken_tokens,
-            tokens,
-            &brackets,
-            proc_op.index,
-            proc_op.operator,
-            operators_len,
-            i,
-        )?;
+        let expr: Expression =
+            operation_in_cal_to_expr(&taken_tokens, tokens, &proc_op, operators_len)?;
 
         let bind = ExprBind::new(i, proc_op.index);
 
