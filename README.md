@@ -1,4 +1,6 @@
-# Advanced Calculator
+# simp-cal
+
+_Simple Calculate_
 
 This project parses a calculation into expressions, and then evalulates it.
 

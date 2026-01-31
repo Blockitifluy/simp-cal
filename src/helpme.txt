@@ -1,7 +1,7 @@
 Calcualates an equation and then evalulates it into a single number.
 This program follows the rules of order of operations and bracket support.
 
-Usage: advanced-calculator [equations] [options]
+Usage: simp-cal [equations] [options]
 
 Arguements:
   [equations] ... A list of equations to evalulate
