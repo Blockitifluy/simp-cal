@@ -1,6 +1,6 @@
 //! Utility module, for searching for operators inside a collection of tokens.
 use crate::token::{Token, TokenType};
-use std::{cmp::Ordering, fmt};
+use std::fmt;
 
 /// An operator used in calculations.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -109,6 +109,13 @@ impl ProcessedOperator {
             index,
         }
     }
+
+    /// Gets the binding power of the `ProcessedOperator`.
+    /// # Returns
+    /// The binding power of the operator
+    pub fn binding_power(&self) -> i32 {
+        self.operator.get_binding_power()
+    }
 }
 
 /// Gets all the operators in a token slice.
@@ -134,21 +141,9 @@ pub fn get_operator_in_tokens(tokens: &[Token]) -> Vec<ProcessedOperator> {
 /// - `operators`: A mutable slice of `(usize, Operator)`
 pub fn sort_operators_by_context(operators: &mut [ProcessedOperator]) {
     operators.sort_by(|a, b| {
-        let (a_oper, a_i) = (a.operator, a.index);
-        let (b_oper, b_i) = (b.operator, b.index);
-
-        let brack_cmp = b.bracket_count.partial_cmp(&a.bracket_count).unwrap();
-        if brack_cmp != Ordering::Equal {
-            return brack_cmp;
-        }
-
-        let (a_bind, b_bind) = (a_oper.get_binding_power(), b_oper.get_binding_power());
-
-        let bind_cmp = b_bind.partial_cmp(&a_bind).unwrap();
-        if bind_cmp == Ordering::Equal {
-            a_i.partial_cmp(&b_i).unwrap()
-        } else {
-            bind_cmp
-        }
+        b.bracket_count
+            .cmp(&a.bracket_count)
+            .then(b.binding_power().cmp(&a.binding_power()))
+            .then(a.index.cmp(&b.index))
     });
 }

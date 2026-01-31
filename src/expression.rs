@@ -10,7 +10,7 @@ use std::{error::Error, fmt, ops::RangeInclusive};
 /// # Example
 ///
 /// `1 + 1` is an expression, where it's operants are both numbers (1 + 1) and is the `Whole` type.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Expression {
     /// The operator of the expression.
     pub operator: Operator,

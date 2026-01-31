@@ -114,7 +114,9 @@ fn main() -> io::Result<()> {
 
 #[cfg(test)]
 mod tests {
+    mod eval_test;
     mod examples;
+    mod expression_test;
     mod operator_test;
     mod token_test;
 }

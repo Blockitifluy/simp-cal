@@ -1,4 +1,4 @@
-use crate::token::{parse_tokens, reduce_calculation};
+use crate::token::{self, parse_tokens, reduce_calculation};
 
 use super::examples::*;
 
@@ -22,6 +22,30 @@ fn tokenize_cal() {
 #[should_panic]
 fn parse_number_panic() {
     let input: &str = "1*err^2-2";
+
+    println!("{:?}", parse_tokens(input).unwrap());
+}
+
+#[test]
+#[should_panic]
+fn hanging_start_bracket_panic() {
+    let input: &str = "1+(2+1";
+
+    println!("{:?}", parse_tokens(input).unwrap());
+}
+
+#[test]
+#[should_panic]
+fn hanging_end_bracket_panic() {
+    let input: &str = "1+2+1)";
+
+    println!("{:?}", parse_tokens(input).unwrap());
+}
+
+#[test]
+#[should_panic]
+fn number_parse_number_panic() {
+    let input: &str = "1+.1.123";
 
     println!("{:?}", parse_tokens(input).unwrap());
 }
@@ -76,4 +100,19 @@ fn unwrap_number_panic() {
 fn unwrap_operator_panic() {
     let tokens = parse_tokens("1+1").unwrap();
     tokens[0].token_type.unwrap_operator();
+}
+
+#[test]
+fn token_err_display() {
+    println!(
+        "{}",
+        token::TokenParseError::NumberParse {
+            token: "err".to_string()
+        }
+    );
+    println!("{}", token::TokenParseError::HangingBracket);
+    println!(
+        "{}",
+        token::TokenParseError::InvalidCharacter { character: '\\' }
+    );
 }
