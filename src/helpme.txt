@@ -1,0 +1,19 @@
+Calcualates an equation and then evalulates it into a single number.
+This program follows the rules of order of operations and bracket support.
+
+Usage: advanced-calculator [equations] [options]
+
+Arguements:
+  [equations] ... A list of equations to evalulate
+
+Options:
+  -h, --help
+    Shows this message
+  -v, --verbose
+    Shows the workings of this program
+      --no-eval
+    Doesn't evalulate the equations, if the `--verbose` option isn't choosen
+    then just prints out the expressions in the calculations.
+
+Example:
+  1.5 * (2 + 2) would evalulate to 6.

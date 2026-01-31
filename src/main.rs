@@ -35,12 +35,14 @@ macro_rules! input {
 struct ProgramFlags {
     pub verbose: bool,
     pub eval: bool,
+    pub help: bool,
 }
 impl Default for ProgramFlags {
     fn default() -> Self {
         Self {
             verbose: false,
             eval: true,
+            help: false,
         }
     }
 }
@@ -88,6 +90,7 @@ fn parse_args(args: Vec<String>) -> (ProgramFlags, Vec<String>) {
         match arg_slice {
             "-v" | "--verbose" => flags.verbose = true,
             "--no-eval" => flags.eval = false,
+            "-h" | "--help" => flags.help = true,
             _ => positional_args.push(arg),
         }
     }
@@ -95,9 +98,16 @@ fn parse_args(args: Vec<String>) -> (ProgramFlags, Vec<String>) {
     (flags, positional_args)
 }
 
+const HELP_MSG: &str = include_str!("helpme.txt");
+
 fn main() -> io::Result<()> {
     let args: Vec<String> = env::args().collect();
     let (flags, positional_args) = parse_args(args);
+
+    if flags.help {
+        println!("{HELP_MSG}");
+        return Ok(());
+    }
 
     if positional_args.is_empty() {
         let buffer = input!();
