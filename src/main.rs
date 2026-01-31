@@ -1,4 +1,6 @@
-#[warn(missing_docs)]
+//! Parses calculations into expressions that could be evalulated
+
+#![warn(missing_docs)]
 pub mod eval;
 pub mod expression;
 pub mod operator;

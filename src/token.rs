@@ -4,13 +4,46 @@ use std::error::Error;
 
 use crate::operator::Operator;
 
+/// Creates a new `Operator` token.
+/// # Arguements
+/// - `$bracket_count` - the amount of brackets wrapped around the token
+/// - `$oper` - The operator assigned to the token.
+#[macro_export]
+macro_rules! token_operator {
+    ($bracket_count:expr, $oper:expr) => {
+        Token::new($bracket_count, TokenType::Operator($oper))
+    };
+}
+
+/// Creates a new `Number` token.
+/// # Arguements
+/// - `$bracket_count` - the amount of brackets wrapped around the token
+/// - `$num` - The num assigned to the token.
+#[macro_export]
+macro_rules! token_number {
+    ($bracket_count:expr, $num:expr) => {
+        Token::new($bracket_count, TokenType::Number($num))
+    };
+}
+
 /// Represents a piece of data inside of a calculation.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Token {
+    /// The amount of brackets wrapped around the token.
+    /// A start bracket can be identified as an increase of this value. An end bracket can be
+    /// identified as an decrease of this value.
     pub bracket_count: i32,
+    /// The type of Token.
+    /// # Examples
+    /// - `Number`,
+    /// - `Operator`
     pub token_type: TokenType,
 }
 impl Token {
+    /// Creates a new token.
+    /// # Arguements
+    /// - `bracket_count`: the amount of brackets wrapped around the token
+    /// - `token_type`: the type of Token
     pub const fn new(bracket_count: i32, token_type: TokenType) -> Self {
         Self {
             bracket_count,
@@ -19,6 +52,10 @@ impl Token {
     }
 }
 
+/// The type of the token.
+/// # Examples
+/// - 10.2 is represented as a `Number(10.2)`
+/// - `+` is represented as a `Operator(Operator::Add)`
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum TokenType {
     /// A single number
@@ -82,7 +119,7 @@ pub fn parse_tokens(cal: &str) -> Result<Vec<Token>, TokenParseError> {
                     return Err(TokenParseError::NumberParse { token: num_b });
                 };
 
-                r.push(Token::new(bracket_count, TokenType::Number(num)));
+                r.push(token_number!(bracket_count, num));
                 num_b.clear();
             }
         };
@@ -90,6 +127,9 @@ pub fn parse_tokens(cal: &str) -> Result<Vec<Token>, TokenParseError> {
 
     for c in cal.chars() {
         if c == ')' {
+            if bracket_count == 0 {
+                return Err(TokenParseError::HangingBracket);
+            }
             parse_b!();
             bracket_count -= 1;
             continue;
@@ -110,10 +150,8 @@ pub fn parse_tokens(cal: &str) -> Result<Vec<Token>, TokenParseError> {
             return Err(TokenParseError::InvalidCharacter { character: c });
         };
 
-        let local_b_count = bracket_count;
-
         parse_b!();
-        r.push(Token::new(local_b_count, TokenType::Operator(operator)));
+        r.push(token_operator!(bracket_count, operator));
     }
 
     parse_b!();
@@ -126,11 +164,23 @@ pub fn parse_tokens(cal: &str) -> Result<Vec<Token>, TokenParseError> {
     Ok(r)
 }
 
+/// An error of relating to parsing tokens.
+/// # Used in
+/// - `parse_tokens`
 #[derive(Debug)]
 pub enum TokenParseError {
-    NumberParse { token: String },
+    /// Couldn't parse a token as it wasn't a valid number.
+    NumberParse {
+        /// The token
+        token: String,
+    },
+    /// Represents a start bracket with no end, or a end bracket with no start.
     HangingBracket,
-    InvalidCharacter { character: char },
+    /// An invalid number fount in calculation string
+    InvalidCharacter {
+        /// The invalid character found
+        character: char,
+    },
 }
 impl fmt::Display for TokenParseError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

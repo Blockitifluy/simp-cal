@@ -5,13 +5,30 @@ use crate::{
 };
 use std::{error::Error, fmt, ops::RangeInclusive};
 
+/// A expressions: a combonation of tokens. Has an operator and two operants (which could be a number or an index of an expression).
+///
+/// # Example
+///
+/// `1 + 1` is an expression, where it's operants are both numbers (1 + 1) and is the `Whole` type.
 #[derive(Debug, Clone, Copy)]
 pub struct Expression {
+    /// The operator of the expression.
     pub operator: Operator,
+    /// The amount of brackets wrapped around the expression.
     pub bracket_count: i32,
+    /// The type of expression.
+    /// # Example
+    /// `Whole` means both operants are a number.
     pub expr_type: ExpressionType,
 }
 impl Expression {
+    /// Creates a new expression.
+    /// # Arguements
+    /// - `operator`: the operator of the expression e.g. _+_ (for add) or _/_ (for divide)
+    /// - `bracket_count`: the amount of brackets wrapped around the expression
+    /// - `expr_type`: the type of expression
+    /// # Returns
+    /// A new `Expression`
     pub const fn new(operator: Operator, bracket_count: i32, expr_type: ExpressionType) -> Self {
         Self {
             operator,
@@ -240,9 +257,20 @@ pub fn tree_tokens(tokens: &[Token]) -> Result<Vec<Expression>, ExpressionParsin
     Ok(expressions)
 }
 
+/// Errors relating to expression parsing.
+/// # Used in
+/// - `tree_tokens`
 #[derive(Debug)]
 pub enum ExpressionParsingError {
-    OperantNotNumber { left: bool, token: Token },
+    /// The operant is not a number.
+    OperantNotNumber {
+        /// Is the operant to the left?
+        /// Otherwise, it's on the right
+        left: bool,
+        /// The token of the operant.
+        token: Token,
+    },
+    /// A hanging bracket found (not used).
     HangingBracket,
 }
 impl fmt::Display for ExpressionParsingError {

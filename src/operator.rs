@@ -84,13 +84,24 @@ impl fmt::Display for Operator {
     }
 }
 
+/// A operator found in a collection of `Tokens`.
 #[derive(Debug, PartialEq)]
 pub struct ProcessedOperator {
+    /// a amount of brackets wrapped around the `ProcessedOperator`.
     pub bracket_count: i32,
+    /// The operator
     pub operator: Operator,
+    /// The index of the `ProcessedOperator` inside the original collection of tokens.
     pub index: usize,
 }
 impl ProcessedOperator {
+    /// Creates a new `ProcessedOperator`.
+    /// # Arguements
+    /// - `bracket_count`: the amount of brackets wrapped around the `ProcessedOperator`
+    /// - `operator`: the operator
+    /// - `index`: the index of the `ProcessedOperator` inside the original collection of tokens.
+    /// # Returns
+    /// A new `ProcessedOperator`
     pub const fn new(bracket_count: i32, operator: Operator, index: usize) -> Self {
         Self {
             bracket_count,
