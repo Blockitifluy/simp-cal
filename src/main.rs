@@ -95,7 +95,7 @@ fn parse_args(args: Vec<String>) -> (ProgramFlags, Vec<String>) {
     (flags, positional_args)
 }
 
-fn main() {
+fn main() -> io::Result<()> {
     let args: Vec<String> = env::args().collect();
     let (flags, positional_args) = parse_args(args);
 
@@ -108,6 +108,8 @@ fn main() {
             calculate_buffer(&cal, &flags);
         }
     }
+
+    Ok(())
 }
 
 #[cfg(test)]

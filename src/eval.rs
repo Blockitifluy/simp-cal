@@ -7,42 +7,36 @@ fn get_operants_operator_of_expr(
     expr: &Expression,
     results: &[f32],
 ) -> Result<(f32, f32), EvalCalculationErr> {
+    macro_rules! expr_err {
+        ($index:expr, $is_left: literal, $expr:  expr) => {
+            return Err(EvalCalculationErr::UnorderedExpressions {
+                index: $index,
+                is_left: $is_left,
+                expr: $expr,
+            })
+        };
+    }
+
     match &expr.expr_type {
         ExpressionType::Whole { left, right } => Ok((*left, *right)),
         ExpressionType::Left { left, right } => {
             let Some(r_val) = results.get(*right) else {
-                return Err(EvalCalculationErr::UnorderedExpressions {
-                    index: *right,
-                    is_left: false,
-                    expr: *expr,
-                });
+                expr_err!(*right, false, *expr)
             };
             Ok((*left, *r_val))
         }
         ExpressionType::Right { left, right } => {
             let Some(l_val) = results.get(*left) else {
-                return Err(EvalCalculationErr::UnorderedExpressions {
-                    index: *left,
-                    is_left: true,
-                    expr: *expr,
-                });
+                expr_err!(*left, true, *expr)
             };
             Ok((*l_val, *right))
         }
         ExpressionType::Op { left, right } => {
             let Some(l_val) = results.get(*left) else {
-                return Err(EvalCalculationErr::UnorderedExpressions {
-                    index: *right,
-                    is_left: false,
-                    expr: *expr,
-                });
+                expr_err!(*left, false, *expr)
             };
             let Some(r_val) = results.get(*right) else {
-                return Err(EvalCalculationErr::UnorderedExpressions {
-                    index: *right,
-                    is_left: false,
-                    expr: *expr,
-                });
+                expr_err!(*right, true, *expr)
             };
             Ok((*l_val, *r_val))
         }
