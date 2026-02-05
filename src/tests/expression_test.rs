@@ -53,6 +53,42 @@ fn expression_cal_fuse() {
 }
 
 #[test]
+fn pythagoras_expression() {
+    // (3^2 + 4^2)^0.5
+    let expected_expr = vec![
+        Expression::new(
+            Operator::Pow,
+            1,
+            ExpressionType::Whole {
+                left: 3.0,
+                right: 2.0,
+            },
+        ),
+        Expression::new(
+            Operator::Pow,
+            1,
+            ExpressionType::Whole {
+                left: 4.0,
+                right: 2.0,
+            },
+        ),
+        Expression::new(Operator::Add, 1, ExpressionType::Op { left: 0, right: 1 }),
+        Expression::new(
+            Operator::Pow,
+            0,
+            ExpressionType::Right {
+                left: 2,
+                right: 0.5,
+            },
+        ),
+    ];
+
+    let expr = tree_tokens(&parse_tokens("(3^2+4^2)^0.5").unwrap()).unwrap();
+
+    assert_eq!(expected_expr, expr);
+}
+
+#[test]
 #[should_panic]
 fn operant_not_number_next() {
     let tokens = [

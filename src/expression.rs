@@ -3,7 +3,7 @@ use crate::{
     operator::{Operator, ProcessedOperator, get_operator_in_tokens, sort_operators_by_context},
     token::{Token, TokenType},
 };
-use std::{error::Error, fmt, ops::RangeInclusive};
+use std::{error::Error, fmt};
 
 /// A expressions: a combonation of tokens. Has an operator and two operants (which could be a number or an index of an expression).
 ///
@@ -93,34 +93,28 @@ pub enum ExpressionType {
 #[derive(Debug, Clone)]
 struct ExprBind {
     pub by: usize,
-    pub range: RangeInclusive<usize>,
+    pub start: usize,
+    pub end: usize,
 }
 impl ExprBind {
-    fn new(by: usize, range: RangeInclusive<usize>) -> Self {
-        Self { by, range }
+    fn new(by: usize, start: usize, end: usize) -> Self {
+        Self { by, start, end }
     }
 
     fn new_pos(by: usize, token_pos: usize) -> Self {
-        Self::new(by, (token_pos - 1)..=(token_pos + 1))
-    }
-
-    fn start(&self) -> usize {
-        *self.range.start()
-    }
-
-    fn end(&self) -> usize {
-        *self.range.end()
+        Self::new(by, token_pos - 1, token_pos + 1)
     }
 
     fn contains(&self, i: usize) -> bool {
-        self.range.contains(&i)
+        (self.start..=self.end).contains(&i)
     }
 
+    #[allow(dead_code)]
     fn intersects_bind(&self, range: &Self) -> bool {
-        self.contains(range.start())
-            || self.contains(range.end())
-            || range.contains(self.start())
-            || range.contains(self.end())
+        self.contains(range.start)
+            || self.contains(range.end)
+            || range.contains(self.start)
+            || range.contains(self.end)
     }
 }
 
@@ -153,27 +147,22 @@ fn get_expression_type(
 fn get_neighbouring_expressions(
     place: usize,
     taken_tokens: &[ExprBind],
-    oper_len: usize,
 ) -> (Option<usize>, Option<usize>) {
     let (mut prev_expr, mut next_expr): (Option<usize>, Option<usize>) = (None, None);
 
-    if place > 2 {
-        let prev_i = place - 2;
-        for taken in taken_tokens.iter() {
-            if taken.range.contains(&prev_i) {
-                prev_expr = Some(taken.by);
-                break;
-            }
+    let prev_i = place - 1;
+    for taken in taken_tokens.iter() {
+        if taken.contains(prev_i) {
+            prev_expr = Some(taken.by);
+            break;
         }
     }
 
-    if oper_len + 2 > place {
-        let next_i = place + 2;
-        for taken in taken_tokens.iter() {
-            if taken.range.contains(&next_i) {
-                next_expr = Some(taken.by);
-                break;
-            }
+    let next_i = place + 1;
+    for taken in taken_tokens.iter() {
+        if taken.contains(next_i) {
+            next_expr = Some(taken.by);
+            break;
         }
     }
 
@@ -184,7 +173,6 @@ fn operation_in_cal_to_expr(
     taken_tokens: &[ExprBind],
     tokens: &[Token],
     proc_oper: &ProcessedOperator,
-    oper_len: usize,
 ) -> Result<Expression, ExpressionParsingError> {
     let place = &proc_oper.index;
     let (prev_token, next_token) = (tokens[place - 1], tokens[place + 1]);
@@ -212,7 +200,7 @@ fn operation_in_cal_to_expr(
             },
         ))
     } else {
-        let (prev_expr, next_expr) = get_neighbouring_expressions(*place, taken_tokens, oper_len);
+        let (prev_expr, next_expr) = get_neighbouring_expressions(*place, taken_tokens);
 
         Ok(Expression::new(
             proc_oper.operator,
@@ -222,46 +210,29 @@ fn operation_in_cal_to_expr(
     }
 }
 
-fn add_to_taken_tokens(taken_tokens: &mut Vec<ExprBind>, bind: ExprBind) {
-    if taken_tokens.is_empty() {
-        taken_tokens.push(bind);
-        return;
-    }
-
-    let Some(bind_mut) = taken_tokens.iter_mut().find(|b| b.intersects_bind(&bind)) else {
-        taken_tokens.push(bind);
-        return;
-    };
-
-    let (a_start, a_end) = (bind.start(), bind.end());
-    let (b_start, b_end) = (bind_mut.start(), bind_mut.end());
-
-    let (new_start, new_end) = (a_start.min(b_start), a_end.max(b_end));
-
-    bind_mut.range = new_start..=new_end;
-    bind_mut.by = bind.by;
-}
-
 fn fuse_taken_tokens(taken_tokens: &mut Vec<ExprBind>) {
     if taken_tokens.is_empty() {
         return;
     }
 
     // Sort by.range start, then by.range end
-    taken_tokens.sort_by(|a, b| a.range.start().cmp(&b.start()).then(a.end().cmp(&b.end())));
+    taken_tokens.sort_by(|a, b| a.start.cmp(&b.start).then(a.end.cmp(&b.end)));
 
     let mut write_idx = 0;
 
     for i in 1..taken_tokens.len() {
         let token_bind: ExprBind = taken_tokens[i].clone();
-        let current_start = *token_bind.range.start();
-        let current_end = *token_bind.range.end();
+        let write_bind = taken_tokens.get_mut(write_idx).unwrap();
 
-        if current_start < taken_tokens[write_idx].end() + 1 {
-            let new_end = current_end.max(taken_tokens[write_idx].end());
+        let current_start = token_bind.start;
+        let current_end = token_bind.end;
+
+        if current_start < write_bind.end + 1 {
+            let new_end = current_end.max(write_bind.end);
             taken_tokens[write_idx] = ExprBind {
-                range: taken_tokens[write_idx].start()..=new_end,
-                by: token_bind.by,
+                start: write_bind.start,
+                end: new_end,
+                by: token_bind.by.max(write_bind.by),
             };
         } else {
             write_idx += 1;
@@ -285,17 +256,14 @@ pub fn tree_tokens(tokens: &[Token]) -> Result<Vec<Expression>, ExpressionParsin
     let mut expressions = Vec::<Expression>::new();
     let mut taken_tokens = Vec::<ExprBind>::new();
 
-    let operators_len = operators.len();
     for (i, proc_op) in operators.into_iter().enumerate() {
-        let expr: Expression =
-            operation_in_cal_to_expr(&taken_tokens, tokens, &proc_op, operators_len)?;
+        let expr: Expression = operation_in_cal_to_expr(&taken_tokens, tokens, &proc_op)?;
 
         let bind = ExprBind::new_pos(i, proc_op.index);
 
         expressions.push(expr);
-        // WARN: Incorrect result when parsing 10 * (2 + 1 - (6 * 2))
+        taken_tokens.push(bind);
         fuse_taken_tokens(&mut taken_tokens);
-        add_to_taken_tokens(&mut taken_tokens, bind);
     }
 
     Ok(expressions)
