@@ -1,5 +1,5 @@
 use crate::{
-    expression::{Expression, ExpressionParsingError, ExpressionType, tree_tokens},
+    expression::{ExprBind, Expression, ExpressionParsingError, ExpressionType, tree_tokens},
     operator::Operator,
     token::{Token, TokenType, parse_tokens},
     token_number, token_operator,
@@ -173,5 +173,17 @@ fn expression_err_display() {
             left: true,
             token: token_operator!(0, Operator::Add)
         }
+    );
+}
+
+#[test]
+fn expression_intersects_bind() {
+    assert!(
+        !ExprBind::new(0, 0, 1).intersects_bind(&ExprBind::new(0, 2, 3)),
+        "not intersecting"
+    );
+    assert!(
+        ExprBind::new(0, 0, 5).intersects_bind(&ExprBind::new(0, 0, 3)),
+        "intersects"
     );
 }

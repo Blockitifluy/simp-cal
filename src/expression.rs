@@ -90,27 +90,51 @@ pub enum ExpressionType {
     },
 }
 
+/// Represents a section of tokens owned by a expression
 #[derive(Debug, Clone)]
-struct ExprBind {
+pub struct ExprBind {
+    /// The `Expression` that owns this `ExprBind`.
     pub by: usize,
+    /// The start of the range
     pub start: usize,
+    /// The end of the range
     pub end: usize,
 }
 impl ExprBind {
-    fn new(by: usize, start: usize, end: usize) -> Self {
+    /// Creates a new `ExprBind`.
+    /// # Arguements
+    /// - `by`: the `Expression` that owns this `ExprBind`
+    /// - `start`: the start of the range
+    /// - `end`: the end of the range
+    /// # Returns
+    /// A new `ExprBind`
+    pub fn new(by: usize, start: usize, end: usize) -> Self {
         Self { by, start, end }
     }
 
-    fn new_pos(by: usize, token_pos: usize) -> Self {
+    /// Creates a new `ExprBind` of the range of one `Expression`.
+    /// # Arguements
+    /// - `by`: the operator that owns this `ExprBind`
+    /// - `token_pos`: the position of the operator
+    pub fn new_pos(by: usize, token_pos: usize) -> Self {
         Self::new(by, token_pos - 1, token_pos + 1)
     }
 
-    fn contains(&self, i: usize) -> bool {
+    /// Does an index is contained in `self`?
+    /// # Arguements
+    /// - `i`: the index
+    /// # Returns
+    /// Is contained?
+    pub fn contains(&self, i: usize) -> bool {
         (self.start..=self.end).contains(&i)
     }
 
-    #[allow(dead_code)]
-    fn intersects_bind(&self, range: &Self) -> bool {
+    /// Is `self` intersecting with another `ExprBind`?
+    /// # Arguements
+    /// - `range`: the other `ExprBind`
+    /// # Returns
+    /// Is intersecting?
+    pub fn intersects_bind(&self, range: &Self) -> bool {
         self.contains(range.start)
             || self.contains(range.end)
             || range.contains(self.start)
