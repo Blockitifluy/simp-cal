@@ -99,6 +99,16 @@ impl TokenType {
     }
 }
 
+fn mul_start_bracket_handle(r: &mut Vec<Token>, bracket_count: &mut i32) {
+    let Some(last_token) = r.last() else {
+        return;
+    };
+
+    if last_token.bracket_count == *bracket_count || !last_token.token_type.is_operator() {
+        r.push(token_operator!(*bracket_count - 1, Operator::Mul));
+    }
+}
+
 /// Parses the tokens of a calculation.
 /// # Arguements
 /// - `cal`: calculation string
@@ -111,6 +121,7 @@ pub fn parse_tokens(cal: &str) -> Result<Vec<Token>, TokenParseError> {
 
     let mut num_b = String::with_capacity(16);
     let mut bracket_count = 0;
+    let mut last_bracket = 0usize;
 
     macro_rules! parse_b {
         () => {
@@ -125,10 +136,13 @@ pub fn parse_tokens(cal: &str) -> Result<Vec<Token>, TokenParseError> {
         };
     }
 
-    for c in cal.chars() {
+    for (i, c) in cal.chars().enumerate() {
         if c == ')' {
             if bracket_count == 0 {
                 return Err(TokenParseError::HangingBracket);
+            }
+            if last_bracket + 1 == i {
+                return Err(TokenParseError::EmptyBracket { at: i });
             }
             parse_b!();
             bracket_count -= 1;
@@ -136,7 +150,10 @@ pub fn parse_tokens(cal: &str) -> Result<Vec<Token>, TokenParseError> {
         }
 
         if c == '(' {
+            parse_b!();
             bracket_count += 1;
+            last_bracket = i;
+            mul_start_bracket_handle(&mut r, &mut bracket_count);
             continue;
         }
 
@@ -157,7 +174,6 @@ pub fn parse_tokens(cal: &str) -> Result<Vec<Token>, TokenParseError> {
     parse_b!();
 
     if bracket_count != 0 {
-        eprintln!("{:?}", r);
         return Err(TokenParseError::HangingBracket);
     }
     r.shrink_to_fit();
@@ -181,6 +197,11 @@ pub enum TokenParseError {
         /// The invalid character found
         character: char,
     },
+    /// Thrown when a bracket has no tokens inside e.g. `()`.
+    EmptyBracket {
+        /// The index of the end bracket
+        at: usize,
+    },
 }
 impl fmt::Display for TokenParseError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -188,6 +209,7 @@ impl fmt::Display for TokenParseError {
             Self::NumberParse { token } => write!(f, "couldn't parse {token} as a number"),
             Self::HangingBracket => write!(f, "bracket hanging"),
             Self::InvalidCharacter { character } => write!(f, "invalid character {character}"),
+            Self::EmptyBracket { at } => write!(f, "empty bracket found at {at}"),
         }
     }
 }

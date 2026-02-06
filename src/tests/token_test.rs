@@ -19,6 +19,14 @@ fn tokenize_cal() {
 }
 
 #[test]
+fn tokenize_quatratic() {
+    let tokens = parse_tokens("(1+2)(3+4)").unwrap();
+    let tokens_eq = parse_tokens("(1+2)*(3+4)").unwrap();
+
+    assert_eq!(tokens, tokens_eq);
+}
+
+#[test]
 #[should_panic]
 fn parse_number_panic() {
     let input: &str = "1*err^2-2";
@@ -40,6 +48,14 @@ fn hanging_end_bracket_panic() {
     let input: &str = "1+2+1)";
 
     println!("{:?}", parse_tokens(input).unwrap());
+}
+
+#[test]
+#[should_panic]
+fn empty_bracket_panic() {
+    let input: &str = "1+()";
+
+    println!("{:?}", parse_tokens(input).unwrap())
 }
 
 #[test]
@@ -115,4 +131,5 @@ fn token_err_display() {
         "{}",
         token::TokenParseError::InvalidCharacter { character: '\\' }
     );
+    println!("{}", token::TokenParseError::EmptyBracket { at: 12usize })
 }
