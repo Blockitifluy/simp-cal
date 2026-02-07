@@ -293,6 +293,96 @@ pub fn tree_tokens(tokens: &[Token]) -> Result<Vec<Expression>, ExpressionParsin
     Ok(expressions)
 }
 
+/// A reason why an expression slice is valid.
+#[derive(Debug, PartialEq)]
+pub enum ExpressionInvalidReason {
+    /// When the first expression is not the `ExpressionType` _Whole_.
+    FirstExprNotWhole,
+    /// When there an expression that is not referenced by anyother expression, the exception is
+    /// when the expression is the last one.
+    UnreferencedExprs {
+        /// The indices of the expressions that are not referenced.
+        indices: Vec<usize>,
+    },
+    /// When the an expression's reference is not in range of the slice, or has been referenced
+    /// twice.
+    ReferenceError {
+        /// The index of the expression
+        index: usize,
+    },
+}
+impl fmt::Display for ExpressionInvalidReason {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::FirstExprNotWhole => write!(f, "the first expression is not of the type whole"),
+            Self::UnreferencedExprs { indices } => {
+                write!(f, "the expressions {indices:?} weren't not referenced")
+            }
+            Self::ReferenceError { index } => {
+                write!(f, "the expressions reference {index}, doesn't exist")
+            }
+        }
+    }
+}
+
+/// Checks if a expression slice is valid, this means it can be calculated without error.
+/// # Arguements
+/// - `expr`: a slice of expressions
+/// # Return
+/// Returns `None`, if the slice vaild, otherwise returns the reason why it is invalid.
+/// # Note
+/// This doesn't check for expressions that don't follow the order of operations.
+pub fn is_expressions_valid(exprs: &[Expression]) -> Option<ExpressionInvalidReason> {
+    // first, the first token has to be the Whole type
+
+    let Some(first) = exprs.first() else {
+        return None;
+    };
+
+    if !matches!(first.expr_type, ExpressionType::Whole { .. }) {
+        return Some(ExpressionInvalidReason::FirstExprNotWhole);
+    }
+
+    // secondly, every expression has to be referenced once unless it's the last one
+    let mut unrefed = Vec::with_capacity(exprs.len() - 1);
+
+    macro_rules! rm_element {
+        ($e:expr) => {
+            let Some(i) = unrefed.iter().position(|x| *x == $e) else {
+                return Some(ExpressionInvalidReason::ReferenceError { index: $e });
+            };
+            unrefed.swap_remove(i);
+        };
+    }
+
+    for (i, expr) in exprs.iter().enumerate() {
+        let is_last = i == exprs.len() - 1;
+        match expr.expr_type {
+            ExpressionType::Whole { .. } => {}
+            ExpressionType::Left { right, .. } => {
+                rm_element!(right);
+            }
+            ExpressionType::Right { left, .. } => {
+                rm_element!(left);
+            }
+            ExpressionType::Op { left, right } => {
+                rm_element!(left);
+                rm_element!(right);
+            }
+        }
+
+        if !is_last {
+            unrefed.push(i);
+        }
+    }
+
+    if unrefed.is_empty() {
+        None
+    } else {
+        Some(ExpressionInvalidReason::UnreferencedExprs { indices: unrefed })
+    }
+}
+
 /// Errors relating to expression parsing.
 /// # Used in
 /// - `tree_tokens`
@@ -320,7 +410,7 @@ impl fmt::Display for ExpressionParsingError {
                 )
             }
             Self::HangingBracket => {
-                write!(f, "Hanging bracket")
+                write!(f, "hanging bracket")
             }
         }
     }

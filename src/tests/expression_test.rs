@@ -1,5 +1,8 @@
 use crate::{
-    expression::{ExprBind, Expression, ExpressionParsingError, ExpressionType, tree_tokens},
+    expression::{
+        ExprBind, Expression, ExpressionInvalidReason, ExpressionParsingError, ExpressionType,
+        is_expressions_valid, tree_tokens,
+    },
     operator::Operator,
     token::{Token, TokenType, parse_tokens},
     token_number, token_operator,
@@ -186,4 +189,112 @@ fn expression_intersects_bind() {
         ExprBind::new(0, 0, 5).intersects_bind(&ExprBind::new(0, 0, 3)),
         "intersects"
     );
+}
+
+#[test]
+fn valid_expr() {
+    assert_eq!(is_expressions_valid(&EXAMPLE_EXPRESSIONS), None)
+}
+#[test]
+fn valid_expr_empty() {
+    assert!(is_expressions_valid(&Vec::new()).is_none())
+}
+
+#[test]
+fn invalid_first_expr_whole() {
+    let exprs = vec![
+        Expression::new(
+            Operator::Mul,
+            0,
+            ExpressionType::Left {
+                left: 5.0,
+                right: 1,
+            },
+        ),
+        Expression::new(
+            Operator::Add,
+            0,
+            ExpressionType::Whole {
+                left: 2.0,
+                right: 2.0,
+            },
+        ),
+    ];
+
+    let reason = is_expressions_valid(&exprs).unwrap();
+
+    assert!(matches!(
+        reason,
+        ExpressionInvalidReason::FirstExprNotWhole { .. }
+    ))
+}
+
+#[test]
+fn invalid_reference_error() {
+    let exprs = vec![
+        Expression::new(
+            Operator::Mul,
+            0,
+            ExpressionType::Whole {
+                left: 5.0,
+                right: 1.0,
+            },
+        ),
+        Expression::new(
+            Operator::Add,
+            0,
+            ExpressionType::Left {
+                left: 2.0,
+                right: 2,
+            },
+        ),
+    ];
+
+    let reason = is_expressions_valid(&exprs).unwrap();
+
+    assert!(matches!(
+        reason,
+        ExpressionInvalidReason::ReferenceError { .. }
+    ))
+}
+
+#[test]
+fn invalid_unreference_expr() {
+    let exprs = vec![
+        Expression::new(
+            Operator::Mul,
+            0,
+            ExpressionType::Whole {
+                left: 5.0,
+                right: 1.0,
+            },
+        ),
+        Expression::new(
+            Operator::Add,
+            0,
+            ExpressionType::Whole {
+                left: 1.0,
+                right: 2.0,
+            },
+        ),
+    ];
+
+    let reason = is_expressions_valid(&exprs).unwrap();
+
+    assert!(matches!(
+        reason,
+        ExpressionInvalidReason::UnreferencedExprs { .. }
+    ))
+}
+
+#[test]
+fn valid_expression_display() {
+    println!("{}", ExpressionInvalidReason::FirstExprNotWhole);
+    println!(
+        "{}",
+        ExpressionInvalidReason::UnreferencedExprs {
+            indices: vec![1, 2, 3]
+        }
+    );
+    println!("{}", ExpressionInvalidReason::ReferenceError { index: 2 });
 }
