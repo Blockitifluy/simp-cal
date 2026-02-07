@@ -223,10 +223,7 @@ fn invalid_first_expr_whole() {
 
     let reason = is_expressions_valid(&exprs).unwrap();
 
-    assert!(matches!(
-        reason,
-        ExpressionInvalidReason::FirstExprNotWhole { .. }
-    ))
+    assert!(matches!(reason, ExpressionInvalidReason::FirstExprNotWhole))
 }
 
 #[test]

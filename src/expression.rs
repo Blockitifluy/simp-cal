@@ -1,6 +1,6 @@
 //! Handles converting tokens into expressions for evalulation a calculation.
 use crate::{
-    operator::{Operator, ProcessedOperator, get_operator_in_tokens, sort_operators_by_context},
+    operator::{Operator, ProcessedOperator, get_operator_in_tokens},
     token::{Token, TokenType},
 };
 use std::{error::Error, fmt};
@@ -91,7 +91,7 @@ pub enum ExpressionType {
 }
 
 /// Represents a section of tokens owned by a expression
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct ExprBind {
     /// The `Expression` that owns this `ExprBind`.
     pub by: usize,
@@ -245,7 +245,7 @@ fn fuse_taken_tokens(taken_tokens: &mut Vec<ExprBind>) {
     let mut write_idx = 0;
 
     for i in 1..taken_tokens.len() {
-        let token_bind: ExprBind = taken_tokens[i].clone();
+        let token_bind: ExprBind = *taken_tokens.get(i).unwrap();
         let write_bind = taken_tokens.get_mut(write_idx).unwrap();
 
         let current_start = token_bind.start;
@@ -260,7 +260,7 @@ fn fuse_taken_tokens(taken_tokens: &mut Vec<ExprBind>) {
             };
         } else {
             write_idx += 1;
-            taken_tokens[write_idx] = token_bind.clone();
+            taken_tokens[write_idx] = token_bind;
         }
     }
 
@@ -275,7 +275,7 @@ fn fuse_taken_tokens(taken_tokens: &mut Vec<ExprBind>) {
 /// A vec of `Expression`s.
 pub fn tree_tokens(tokens: &[Token]) -> Result<Vec<Expression>, ExpressionParsingError> {
     let mut operators = get_operator_in_tokens(tokens);
-    sort_operators_by_context(&mut operators);
+    operators.sort();
 
     let mut expressions = Vec::<Expression>::new();
     let mut taken_tokens = Vec::<ExprBind>::new();
@@ -335,9 +335,7 @@ impl fmt::Display for ExpressionInvalidReason {
 pub fn is_expressions_valid(exprs: &[Expression]) -> Option<ExpressionInvalidReason> {
     // first, the first token has to be the Whole type
 
-    let Some(first) = exprs.first() else {
-        return None;
-    };
+    let first = exprs.first()?;
 
     if !matches!(first.expr_type, ExpressionType::Whole { .. }) {
         return Some(ExpressionInvalidReason::FirstExprNotWhole);

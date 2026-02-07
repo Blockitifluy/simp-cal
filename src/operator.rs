@@ -3,7 +3,7 @@ use crate::token::{Token, TokenType};
 use std::fmt;
 
 /// An operator used in calculations.
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Operator {
     /// Add '+'
     Add,
@@ -85,7 +85,7 @@ impl fmt::Display for Operator {
 }
 
 /// A operator found in a collection of `Tokens`.
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct ProcessedOperator {
     /// a amount of brackets wrapped around the `ProcessedOperator`.
     pub bracket_count: i32,
@@ -118,6 +118,22 @@ impl ProcessedOperator {
     }
 }
 
+impl PartialOrd for ProcessedOperator {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for ProcessedOperator {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        other
+            .bracket_count
+            .cmp(&self.bracket_count)
+            .then(other.binding_power().cmp(&self.binding_power()))
+            .then(self.index.cmp(&other.index))
+    }
+}
+
 /// Gets all the operators in a token slice.
 /// # Arguements
 /// - `tokens`: a slice of tokens
@@ -134,16 +150,4 @@ pub fn get_operator_in_tokens(tokens: &[Token]) -> Vec<ProcessedOperator> {
             Some(ProcessedOperator::new(t.bracket_count, op, i))
         })
         .collect()
-}
-
-/// Sorts operators by it's binding power and bracket count.
-/// # Arguements
-/// - `operators`: A mutable slice of `(usize, Operator)`
-pub fn sort_operators_by_context(operators: &mut [ProcessedOperator]) {
-    operators.sort_by(|a, b| {
-        b.bracket_count
-            .cmp(&a.bracket_count)
-            .then(b.binding_power().cmp(&a.binding_power()))
-            .then(a.index.cmp(&b.index))
-    });
 }
