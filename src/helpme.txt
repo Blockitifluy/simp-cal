@@ -7,9 +7,11 @@ Arguements:
   [equations] ... A list of equations to evalulate
 
 Options:
+  -v, --version
+    Prints the programs version
   -h, --help
     Shows this message
-  -v, --verbose
+  -V, --verbose
     Shows the workings of this program
       --no-eval
     Doesn't evalulate the equations, if the `--verbose` option isn't choosen

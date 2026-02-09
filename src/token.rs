@@ -52,6 +52,12 @@ impl Token {
     }
 }
 
+impl fmt::Display for Token {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{} {:?}", self.bracket_count, self.token_type)
+    }
+}
+
 /// The type of the token.
 /// # Examples
 /// - 10.2 is represented as a `Number(10.2)`
@@ -215,6 +221,54 @@ impl fmt::Display for TokenParseError {
 }
 
 impl Error for TokenParseError {}
+
+/// Reconstructs or unparses tokens into it's `String` form.
+/// # Arguements
+/// - `tokens`: the tokens to be reconstructed
+/// - `include_spacing`: include whitespace between operators
+/// # Returns
+/// The reconstructed string
+/// # Examples
+/// ```
+/// let tokens = vec![token_number!(0, 1.0), token_operator!(0, Operator::Add), token_number!(0, 2.0)];
+///
+/// assert_eq!(reconstruct_tokens(&tokens, false), "1+1")
+/// assert_eq!(reconstruct_tokens(&tokens, true), "1 + 1")
+/// ```
+/// # Note
+/// Can accept malformed tokens, and reconstruction doesn't match exactly with it's inputs e.g.
+/// _1.0_ will always become _1_.
+pub fn reconstruct_tokens(tokens: &[Token], include_spacing: bool) -> String {
+    let mut b = String::with_capacity(16);
+    let mut last_bracket_count = 0i32;
+
+    for t in tokens {
+        let bracket_diff = t.bracket_count - last_bracket_count;
+        if bracket_diff > 0 {
+            // bracket (
+            b.push_str(&"(".repeat(bracket_diff as usize));
+        } else if bracket_diff < 0 {
+            // bracket )
+            b.push_str(&")".repeat(-bracket_diff as usize));
+        }
+
+        match t.token_type {
+            TokenType::Number(num) => b.push_str(&num.to_string()),
+            TokenType::Operator(op) => {
+                if !include_spacing {
+                    b.push_str(op.as_sign());
+                } else {
+                    b.push_str(&format!(" {} ", op.as_sign()));
+                }
+            }
+        }
+
+        last_bracket_count = t.bracket_count;
+    }
+
+    b.shrink_to_fit();
+    b
+}
 
 /// Removes unnessary characters and data from the calculation string, e.g. whitespace.
 /// # Arguements

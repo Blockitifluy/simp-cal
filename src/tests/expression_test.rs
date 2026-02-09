@@ -21,7 +21,7 @@ fn expression_cal() {
 #[test]
 fn expression_cal_fuse() {
     // 10 * (2 + 1 - (6 * 2))
-    let expression_test: [Expression; 4] = [
+    let expression_test = vec![
         Expression::new(
             Operator::Mul,
             2,
@@ -50,8 +50,9 @@ fn expression_cal_fuse() {
     ];
 
     assert_eq!(
-        &expression_test.to_vec(),
-        &tree_tokens(&parse_tokens("10*(2+1-(6*2))").unwrap()).unwrap()
+        &expression_test,
+        &tree_tokens(&parse_tokens("10*(2+1-(6*2))").expect("couldn't parse tokens"))
+            .expect("couln't parse expression")
     )
 }
 
@@ -86,9 +87,11 @@ fn pythagoras_expression() {
         ),
     ];
 
-    let expr = tree_tokens(&parse_tokens("(3^2+4^2)^0.5").unwrap()).unwrap();
-
-    assert_eq!(expected_expr, expr);
+    assert_eq!(
+        expected_expr,
+        tree_tokens(&parse_tokens("(3^2+4^2)^0.5").expect("couldn't parse tokens"))
+            .expect("couldn't parse expression")
+    );
 }
 
 #[test]

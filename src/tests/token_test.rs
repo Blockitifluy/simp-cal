@@ -1,4 +1,4 @@
-use crate::token::{self, parse_tokens, reduce_calculation};
+use crate::{token::*, token_number};
 
 use super::examples::*;
 
@@ -13,15 +13,23 @@ fn reduce_cal() {
 
 #[test]
 fn tokenize_cal() {
-    let tokens = parse_tokens(CALCULATION_EXAMPLE).unwrap();
+    assert_eq!(
+        parse_tokens(CALCULATION_EXAMPLE).expect("couldn't parse tokens"),
+        EXAMPLE_TOKENS
+    )
+}
 
-    assert_eq!(tokens, EXAMPLE_TOKENS)
+#[test]
+fn display_test() {
+    let token = token_number!(0, 2.0);
+
+    println!("{token}");
 }
 
 #[test]
 fn tokenize_quatratic() {
-    let tokens = parse_tokens("(1+2)(3+4)").unwrap();
-    let tokens_eq = parse_tokens("(1+2)*(3+4)").unwrap();
+    let tokens = parse_tokens("(1+2)(3+4)").expect("couldn't parse tokens");
+    let tokens_eq = parse_tokens("(1+2)*(3+4)").expect("couldn't parse tokens equalant");
 
     assert_eq!(tokens, tokens_eq);
 }
@@ -68,7 +76,7 @@ fn number_parse_number_panic() {
 
 #[test]
 fn is_type() {
-    let tokens = parse_tokens(CALCULATION_EXAMPLE).unwrap();
+    let tokens = parse_tokens(CALCULATION_EXAMPLE).expect("couldn't parse tokens");
 
     for (i, tok) in tokens.into_iter().enumerate() {
         if i % 2 == 0 {
@@ -87,7 +95,7 @@ fn is_type() {
 
 #[test]
 fn unwrap_type() {
-    let tokens = parse_tokens(CALCULATION_EXAMPLE).unwrap();
+    let tokens = parse_tokens(CALCULATION_EXAMPLE).expect("couldn't parse tokens");
 
     for (i, tok) in tokens.iter().enumerate() {
         if i % 2 == 0 {
@@ -122,14 +130,23 @@ fn unwrap_operator_panic() {
 fn token_err_display() {
     println!(
         "{}",
-        token::TokenParseError::NumberParse {
+        TokenParseError::NumberParse {
             token: "err".to_string()
         }
     );
-    println!("{}", token::TokenParseError::HangingBracket);
-    println!(
-        "{}",
-        token::TokenParseError::InvalidCharacter { character: '\\' }
+    println!("{}", TokenParseError::HangingBracket);
+    println!("{}", TokenParseError::InvalidCharacter { character: '\\' });
+    println!("{}", TokenParseError::EmptyBracket { at: 12usize })
+}
+
+#[test]
+fn token_reconstruct() {
+    assert_eq!(
+        reconstruct_tokens(&EXAMPLE_TOKENS, false),
+        CALCULATION_EXAMPLE
     );
-    println!("{}", token::TokenParseError::EmptyBracket { at: 12usize })
+    assert_eq!(
+        reconstruct_tokens(&EXAMPLE_TOKENS, true),
+        CALCULATION_SPACING_EXAMPLE
+    );
 }

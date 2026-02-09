@@ -26,7 +26,9 @@ macro_rules! input {
     () => {{
         let mut buffer = String::new();
         let stdin = io::stdin();
-        stdin.read_line(&mut buffer).unwrap();
+        stdin
+            .read_line(&mut buffer)
+            .expect("couldn't read line buffer");
         buffer
     }};
 }
@@ -38,6 +40,7 @@ struct ProgramFlags {
     pub verbose: bool,
     pub eval: bool,
     pub help: bool,
+    pub version: bool,
 }
 impl Default for ProgramFlags {
     fn default() -> Self {
@@ -45,6 +48,7 @@ impl Default for ProgramFlags {
             verbose: false,
             eval: true,
             help: false,
+            version: false,
         }
     }
 }
@@ -91,9 +95,10 @@ fn parse_args(args: Vec<String>) -> (ProgramFlags, Vec<String>) {
         }
 
         match &arg as &str {
-            "-v" | "--verbose" => flags.verbose = true,
+            "-V" | "--verbose" => flags.verbose = true,
             "--no-eval" => flags.eval = false,
             "-h" | "--help" => flags.help = true,
+            "-v" | "--version" => flags.version = true,
             _ => positional_args.push(arg),
         }
     }
@@ -102,6 +107,7 @@ fn parse_args(args: Vec<String>) -> (ProgramFlags, Vec<String>) {
 }
 
 const HELP_MSG: &str = include_str!("helpme.txt");
+const PKG_VERSION: Option<&str> = option_env!("CARGO_PKG_VERSION");
 
 fn main() -> ProgramResult<()> {
     let args: Vec<String> = env::args().collect();
@@ -109,6 +115,10 @@ fn main() -> ProgramResult<()> {
 
     if flags.help {
         println!("{HELP_MSG}");
+        return Ok(());
+    }
+    if flags.version {
+        println!("simp-cal version {}", PKG_VERSION.unwrap_or("unknown"));
         return Ok(());
     }
 

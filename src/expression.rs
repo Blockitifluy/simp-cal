@@ -1,8 +1,5 @@
 //! Handles converting tokens into expressions for evalulation a calculation.
-use crate::{
-    operator::{Operator, ProcessedOperator, get_operator_in_tokens},
-    token::{Token, TokenType},
-};
+use crate::{operator::*, token::*};
 use std::{error::Error, fmt};
 
 /// A expressions: a combonation of tokens. Has an operator and two operants (which could be a number or an index of an expression).
@@ -245,8 +242,12 @@ fn fuse_taken_tokens(taken_tokens: &mut Vec<ExprBind>) {
     let mut write_idx = 0;
 
     for i in 1..taken_tokens.len() {
-        let token_bind: ExprBind = *taken_tokens.get(i).unwrap();
-        let write_bind = taken_tokens.get_mut(write_idx).unwrap();
+        let token_bind: ExprBind = *taken_tokens
+            .get(i)
+            .unwrap_or_else(|| panic!("index {write_idx} is out of bounds"));
+        let write_bind = taken_tokens
+            .get_mut(write_idx)
+            .unwrap_or_else(|| panic!("write index {write_idx} is out of bounds"));
 
         let current_start = token_bind.start;
         let current_end = token_bind.end;
@@ -328,8 +329,8 @@ impl fmt::Display for ExpressionInvalidReason {
 /// Checks if a expression slice is valid, this means it can be calculated without error.
 /// # Arguements
 /// - `expr`: a slice of expressions
-/// # Return
-/// Returns `None`, if the slice vaild, otherwise returns the reason why it is invalid.
+/// # Returns
+/// `None`, if the slice vaild, otherwise returns the reason why it is invalid.
 /// # Note
 /// This doesn't check for expressions that don't follow the order of operations.
 pub fn is_expressions_valid(exprs: &[Expression]) -> Option<ExpressionInvalidReason> {

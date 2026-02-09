@@ -5,7 +5,8 @@ use crate::{
     token_number, token_operator,
 };
 
-pub const CALCULATION_EXAMPLE: &str = "2*(23^(3-2)/(0.5*1.0))+100";
+pub const CALCULATION_EXAMPLE: &str = "2*(23^(3-2)/(0.5*1))+100";
+pub const CALCULATION_SPACING_EXAMPLE: &str = "2 * (23 ^ (3 - 2) / (0.5 * 1)) + 100";
 
 pub const EXAMPLE_RESULT: f32 = 192.0;
 
