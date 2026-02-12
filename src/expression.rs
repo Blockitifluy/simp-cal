@@ -10,7 +10,7 @@ use std::{error::Error, fmt};
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Expression {
     /// The operator of the expression.
-    pub operator: Operator,
+    pub operator: InfixOperator,
     /// The type of expression.
     /// # Example
     /// `Whole` means both operants are a number.
@@ -23,7 +23,7 @@ impl Expression {
     /// - `expr_type`: the type of expression
     /// # Returns
     /// A new `Expression`
-    pub const fn new(operator: Operator, expr_type: ExpressionType) -> Self {
+    pub const fn new(operator: InfixOperator, expr_type: ExpressionType) -> Self {
         Self {
             operator,
             expr_type,

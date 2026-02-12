@@ -1,4 +1,4 @@
-use crate::operator::{Operator, get_operator_in_tokens};
+use crate::operator::{InfixOperator, OperatorTrait, get_operator_in_tokens};
 
 use super::examples::*;
 
@@ -11,29 +11,29 @@ fn as_sign() {
         };
     }
 
-    sign!(Operator::Add, "+");
-    sign!(Operator::Sub, "-");
-    sign!(Operator::Mul, "*");
-    sign!(Operator::Div, "/");
-    sign!(Operator::Pow, "^");
+    sign!(InfixOperator::Add, "+");
+    sign!(InfixOperator::Sub, "-");
+    sign!(InfixOperator::Mul, "*");
+    sign!(InfixOperator::Div, "/");
+    sign!(InfixOperator::Pow, "^");
 }
 
 #[test]
 fn compute() {
-    assert_eq!(Operator::Add.compute(5.0, 5.0), 10.0);
-    assert_eq!(Operator::Sub.compute(5.0, 2.5), 2.5);
-    assert_eq!(Operator::Mul.compute(5.0, 5.0), 25.0);
-    assert_eq!(Operator::Div.compute(10.0, 0.0), f32::INFINITY);
-    assert_eq!(Operator::Pow.compute(2.0, 3.0), 8.0);
+    assert_eq!(InfixOperator::Add.compute(5.0, 5.0), 10.0);
+    assert_eq!(InfixOperator::Sub.compute(5.0, 2.5), 2.5);
+    assert_eq!(InfixOperator::Mul.compute(5.0, 5.0), 25.0);
+    assert_eq!(InfixOperator::Div.compute(10.0, 0.0), f32::INFINITY);
+    assert_eq!(InfixOperator::Pow.compute(2.0, 3.0), 8.0);
 }
 
 #[test]
 fn bind() {
-    let add_bind = Operator::Add.get_binding_power();
-    let sub_bind = Operator::Sub.get_binding_power();
-    let mul_bind = Operator::Mul.get_binding_power();
-    let div_bind = Operator::Div.get_binding_power();
-    let pow_bind = Operator::Pow.get_binding_power();
+    let add_bind = InfixOperator::Add.get_binding_power();
+    let sub_bind = InfixOperator::Sub.get_binding_power();
+    let mul_bind = InfixOperator::Mul.get_binding_power();
+    let div_bind = InfixOperator::Div.get_binding_power();
+    let pow_bind = InfixOperator::Pow.get_binding_power();
 
     assert_eq!(add_bind, sub_bind);
     assert_eq!(mul_bind, div_bind);

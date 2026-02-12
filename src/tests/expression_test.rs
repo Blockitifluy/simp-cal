@@ -3,7 +3,7 @@ use crate::{
         ExprBind, Expression, ExpressionInvalidReason, ExpressionParsingError, ExpressionType,
         is_expressions_valid, tree_tokens,
     },
-    operator::Operator,
+    operator::InfixOperator,
     token::{Token, TokenType, parse_tokens},
     token_number, token_operator,
 };
@@ -23,22 +23,22 @@ fn expression_cal_fuse() {
     // 10 * (2 + 1 - (6 * 2))
     let expression_test = vec![
         Expression::new(
-            Operator::Mul,
+            InfixOperator::Mul,
             ExpressionType::Whole {
                 left: 6.0,
                 right: 2.0,
             },
         ),
         Expression::new(
-            Operator::Add,
+            InfixOperator::Add,
             ExpressionType::Whole {
                 left: 2.0,
                 right: 1.0,
             },
         ),
-        Expression::new(Operator::Sub, ExpressionType::Op { left: 1, right: 0 }),
+        Expression::new(InfixOperator::Sub, ExpressionType::Op { left: 1, right: 0 }),
         Expression::new(
-            Operator::Mul,
+            InfixOperator::Mul,
             ExpressionType::Left {
                 left: 10.0,
                 right: 2,
@@ -58,22 +58,22 @@ fn pythagoras_expression() {
     // (3^2 + 4^2)^0.5
     let expected_expr = vec![
         Expression::new(
-            Operator::Pow,
+            InfixOperator::Pow,
             ExpressionType::Whole {
                 left: 3.0,
                 right: 2.0,
             },
         ),
         Expression::new(
-            Operator::Pow,
+            InfixOperator::Pow,
             ExpressionType::Whole {
                 left: 4.0,
                 right: 2.0,
             },
         ),
-        Expression::new(Operator::Add, ExpressionType::Op { left: 0, right: 1 }),
+        Expression::new(InfixOperator::Add, ExpressionType::Op { left: 0, right: 1 }),
         Expression::new(
-            Operator::Pow,
+            InfixOperator::Pow,
             ExpressionType::Right {
                 left: 2,
                 right: 0.5,
@@ -93,10 +93,10 @@ fn pythagoras_expression() {
 fn operant_not_number_next() {
     let tokens = [
         token_number!(1.0),
-        token_operator!(Operator::Sub),
+        token_operator!(InfixOperator::Sub),
         token_number!(1, 1.0),
-        token_operator!(1, Operator::Mul),
-        token_operator!(1, Operator::Mul),
+        token_operator!(1, InfixOperator::Mul),
+        token_operator!(1, InfixOperator::Mul),
     ];
 
     tree_tokens(&tokens).unwrap();
@@ -107,9 +107,9 @@ fn operant_not_number_next() {
 fn operant_not_number_prev() {
     let tokens = [
         token_number!(1.0),
-        token_operator!(Operator::Sub),
-        token_operator!(1, Operator::Add),
-        token_operator!(1, Operator::Pow),
+        token_operator!(InfixOperator::Sub),
+        token_operator!(1, InfixOperator::Add),
+        token_operator!(1, InfixOperator::Pow),
         token_number!(1, 1.0),
     ];
 
@@ -120,12 +120,12 @@ fn operant_not_number_prev() {
 fn expression_display() {
     println!(
         "{}",
-        Expression::new(Operator::Add, ExpressionType::Op { left: 1, right: 2 })
+        Expression::new(InfixOperator::Add, ExpressionType::Op { left: 1, right: 2 })
     );
     println!(
         "{}",
         Expression::new(
-            Operator::Add,
+            InfixOperator::Add,
             ExpressionType::Left {
                 left: 1.0,
                 right: 2
@@ -135,7 +135,7 @@ fn expression_display() {
     println!(
         "{}",
         Expression::new(
-            Operator::Add,
+            InfixOperator::Add,
             ExpressionType::Right {
                 left: 1,
                 right: 1.0
@@ -145,7 +145,7 @@ fn expression_display() {
     println!(
         "{}",
         Expression::new(
-            Operator::Add,
+            InfixOperator::Add,
             ExpressionType::Whole {
                 left: 1.0,
                 right: 1.0
@@ -161,14 +161,14 @@ fn expression_err_display() {
         "{}",
         ExpressionParsingError::OperantNotNumber {
             left: false,
-            token: token_operator!(Operator::Add)
+            token: token_operator!(InfixOperator::Add)
         }
     );
     println!(
         "{}",
         ExpressionParsingError::OperantNotNumber {
             left: true,
-            token: token_operator!(Operator::Add)
+            token: token_operator!(InfixOperator::Add)
         }
     );
 }
@@ -198,14 +198,14 @@ fn valid_expr_empty() {
 fn invalid_first_expr_whole() {
     let exprs = vec![
         Expression::new(
-            Operator::Mul,
+            InfixOperator::Mul,
             ExpressionType::Left {
                 left: 5.0,
                 right: 1,
             },
         ),
         Expression::new(
-            Operator::Add,
+            InfixOperator::Add,
             ExpressionType::Whole {
                 left: 2.0,
                 right: 2.0,
@@ -222,14 +222,14 @@ fn invalid_first_expr_whole() {
 fn invalid_reference_error() {
     let exprs = vec![
         Expression::new(
-            Operator::Mul,
+            InfixOperator::Mul,
             ExpressionType::Whole {
                 left: 5.0,
                 right: 1.0,
             },
         ),
         Expression::new(
-            Operator::Add,
+            InfixOperator::Add,
             ExpressionType::Left {
                 left: 2.0,
                 right: 2,
@@ -249,14 +249,14 @@ fn invalid_reference_error() {
 fn invalid_unreference_expr() {
     let exprs = vec![
         Expression::new(
-            Operator::Mul,
+            InfixOperator::Mul,
             ExpressionType::Whole {
                 left: 5.0,
                 right: 1.0,
             },
         ),
         Expression::new(
-            Operator::Add,
+            InfixOperator::Add,
             ExpressionType::Whole {
                 left: 1.0,
                 right: 2.0,

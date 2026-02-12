@@ -1,7 +1,7 @@
 use crate::{
     eval::{self, eval_calculation},
     expression::{Expression, ExpressionType, tree_tokens},
-    operator::Operator,
+    operator::InfixOperator,
     tests::examples::{CALCULATION_EXAMPLE, EXAMPLE_RESULT},
     token::parse_tokens,
 };
@@ -18,20 +18,20 @@ fn eval_cal_op() {
     // Should equal 13.0
     let expr = [
         Expression::new(
-            Operator::Mul,
+            InfixOperator::Mul,
             ExpressionType::Whole {
                 left: 2.0,
                 right: 2.0,
             },
         ),
         Expression::new(
-            Operator::Mul,
+            InfixOperator::Mul,
             ExpressionType::Whole {
                 left: 3.0,
                 right: 3.0,
             },
         ),
-        Expression::new(Operator::Add, ExpressionType::Op { left: 0, right: 1 }),
+        Expression::new(InfixOperator::Add, ExpressionType::Op { left: 0, right: 1 }),
     ];
 
     assert_eq!(eval_calculation(&expr).unwrap(), 13.0);
@@ -41,7 +41,7 @@ fn eval_cal_op() {
 #[should_panic]
 fn unordered_expr_left() {
     let expr = [Expression::new(
-        Operator::Add,
+        InfixOperator::Add,
         ExpressionType::Left {
             left: 2.0,
             right: 2,
@@ -54,7 +54,7 @@ fn unordered_expr_left() {
 #[should_panic]
 fn unordered_expr_right() {
     let expr = [Expression::new(
-        Operator::Add,
+        InfixOperator::Add,
         ExpressionType::Right {
             left: 2,
             right: 2.0,
@@ -68,20 +68,20 @@ fn unordered_expr_right() {
 fn unordered_expr_op_right() {
     let expr = [
         Expression::new(
-            Operator::Mul,
+            InfixOperator::Mul,
             ExpressionType::Whole {
                 left: 2.0,
                 right: 2.0,
             },
         ),
         Expression::new(
-            Operator::Add,
+            InfixOperator::Add,
             ExpressionType::Whole {
                 left: 2.0,
                 right: 2.0,
             },
         ),
-        Expression::new(Operator::Add, ExpressionType::Op { left: 0, right: 3 }),
+        Expression::new(InfixOperator::Add, ExpressionType::Op { left: 0, right: 3 }),
     ];
 
     eval_calculation(&expr).unwrap();
@@ -92,20 +92,20 @@ fn unordered_expr_op_right() {
 fn unordered_expr_op_left() {
     let expr = [
         Expression::new(
-            Operator::Mul,
+            InfixOperator::Mul,
             ExpressionType::Whole {
                 left: 2.0,
                 right: 2.0,
             },
         ),
         Expression::new(
-            Operator::Add,
+            InfixOperator::Add,
             ExpressionType::Whole {
                 left: 2.0,
                 right: 2.0,
             },
         ),
-        Expression::new(Operator::Add, ExpressionType::Op { left: 5, right: 1 }),
+        Expression::new(InfixOperator::Add, ExpressionType::Op { left: 5, right: 1 }),
     ];
     eval_calculation(&expr).unwrap();
 }
@@ -118,7 +118,7 @@ fn eval_err_display() {
             index: 0,
             is_left: false,
             expr: Expression::new(
-                Operator::Sub,
+                InfixOperator::Sub,
                 ExpressionType::Left {
                     left: 2.0,
                     right: 1
@@ -132,7 +132,7 @@ fn eval_err_display() {
             index: 0,
             is_left: true,
             expr: Expression::new(
-                Operator::Sub,
+                InfixOperator::Sub,
                 ExpressionType::Right {
                     left: 1,
                     right: 2.0

@@ -2,7 +2,7 @@
 use core::fmt;
 use std::error::Error;
 
-use crate::operator::Operator;
+use crate::operator::{InfixOperator, OperatorTrait};
 
 /// Creates a new `Operator` token.
 /// # Arguements
@@ -73,7 +73,7 @@ pub enum TokenType {
     /// A single number
     Number(f32),
     /// An operator
-    Operator(Operator),
+    Operator(InfixOperator),
 }
 impl TokenType {
     /// Unwraps _self_ into an `Operator`.
@@ -81,7 +81,7 @@ impl TokenType {
     /// An `Operator`
     /// # Panics
     /// Panics when the `Token` isn't an `Operator`.
-    pub fn unwrap_operator(&self) -> Operator {
+    pub fn unwrap_operator(&self) -> InfixOperator {
         let Self::Operator(op) = self else {
             panic!("couldn't unwrap token into operator")
         };
@@ -117,7 +117,7 @@ fn mul_start_bracket_handle(r: &mut Vec<Token>, bracket_count: &mut i32) {
     };
 
     if last_token.bracket_count == *bracket_count || !last_token.token_type.is_operator() {
-        r.push(token_operator!(*bracket_count - 1, Operator::Mul));
+        r.push(token_operator!(*bracket_count - 1, InfixOperator::Mul));
     }
 }
 
@@ -170,7 +170,7 @@ pub fn parse_tokens(cal: &str) -> Result<Vec<Token>, TokenParseError> {
         }
 
         // operators and numbers
-        let Some(operator) = Operator::get_operator_from_sign(c) else {
+        let Some(operator) = InfixOperator::get_operator_from_sign(c) else {
             if c.is_numeric() || c == '.' {
                 num_b.push(c);
                 continue;
