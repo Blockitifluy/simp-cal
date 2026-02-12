@@ -19,7 +19,6 @@ fn eval_cal_op() {
     let expr = [
         Expression::new(
             Operator::Mul,
-            0,
             ExpressionType::Whole {
                 left: 2.0,
                 right: 2.0,
@@ -27,13 +26,12 @@ fn eval_cal_op() {
         ),
         Expression::new(
             Operator::Mul,
-            0,
             ExpressionType::Whole {
                 left: 3.0,
                 right: 3.0,
             },
         ),
-        Expression::new(Operator::Add, 0, ExpressionType::Op { left: 0, right: 1 }),
+        Expression::new(Operator::Add, ExpressionType::Op { left: 0, right: 1 }),
     ];
 
     assert_eq!(eval_calculation(&expr).unwrap(), 13.0);
@@ -44,7 +42,6 @@ fn eval_cal_op() {
 fn unordered_expr_left() {
     let expr = [Expression::new(
         Operator::Add,
-        0,
         ExpressionType::Left {
             left: 2.0,
             right: 2,
@@ -58,7 +55,6 @@ fn unordered_expr_left() {
 fn unordered_expr_right() {
     let expr = [Expression::new(
         Operator::Add,
-        0,
         ExpressionType::Right {
             left: 2,
             right: 2.0,
@@ -73,7 +69,6 @@ fn unordered_expr_op_right() {
     let expr = [
         Expression::new(
             Operator::Mul,
-            0,
             ExpressionType::Whole {
                 left: 2.0,
                 right: 2.0,
@@ -81,13 +76,12 @@ fn unordered_expr_op_right() {
         ),
         Expression::new(
             Operator::Add,
-            1,
             ExpressionType::Whole {
                 left: 2.0,
                 right: 2.0,
             },
         ),
-        Expression::new(Operator::Add, 0, ExpressionType::Op { left: 0, right: 3 }),
+        Expression::new(Operator::Add, ExpressionType::Op { left: 0, right: 3 }),
     ];
 
     eval_calculation(&expr).unwrap();
@@ -99,7 +93,6 @@ fn unordered_expr_op_left() {
     let expr = [
         Expression::new(
             Operator::Mul,
-            0,
             ExpressionType::Whole {
                 left: 2.0,
                 right: 2.0,
@@ -107,13 +100,12 @@ fn unordered_expr_op_left() {
         ),
         Expression::new(
             Operator::Add,
-            1,
             ExpressionType::Whole {
                 left: 2.0,
                 right: 2.0,
             },
         ),
-        Expression::new(Operator::Add, 0, ExpressionType::Op { left: 5, right: 1 }),
+        Expression::new(Operator::Add, ExpressionType::Op { left: 5, right: 1 }),
     ];
     eval_calculation(&expr).unwrap();
 }
@@ -127,7 +119,6 @@ fn eval_err_display() {
             is_left: false,
             expr: Expression::new(
                 Operator::Sub,
-                0,
                 ExpressionType::Left {
                     left: 2.0,
                     right: 1
@@ -142,7 +133,6 @@ fn eval_err_display() {
             is_left: true,
             expr: Expression::new(
                 Operator::Sub,
-                0,
                 ExpressionType::Right {
                     left: 1,
                     right: 2.0

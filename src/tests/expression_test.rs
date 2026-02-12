@@ -24,7 +24,6 @@ fn expression_cal_fuse() {
     let expression_test = vec![
         Expression::new(
             Operator::Mul,
-            2,
             ExpressionType::Whole {
                 left: 6.0,
                 right: 2.0,
@@ -32,16 +31,14 @@ fn expression_cal_fuse() {
         ),
         Expression::new(
             Operator::Add,
-            1,
             ExpressionType::Whole {
                 left: 2.0,
                 right: 1.0,
             },
         ),
-        Expression::new(Operator::Sub, 1, ExpressionType::Op { left: 1, right: 0 }),
+        Expression::new(Operator::Sub, ExpressionType::Op { left: 1, right: 0 }),
         Expression::new(
             Operator::Mul,
-            0,
             ExpressionType::Left {
                 left: 10.0,
                 right: 2,
@@ -62,7 +59,6 @@ fn pythagoras_expression() {
     let expected_expr = vec![
         Expression::new(
             Operator::Pow,
-            1,
             ExpressionType::Whole {
                 left: 3.0,
                 right: 2.0,
@@ -70,16 +66,14 @@ fn pythagoras_expression() {
         ),
         Expression::new(
             Operator::Pow,
-            1,
             ExpressionType::Whole {
                 left: 4.0,
                 right: 2.0,
             },
         ),
-        Expression::new(Operator::Add, 1, ExpressionType::Op { left: 0, right: 1 }),
+        Expression::new(Operator::Add, ExpressionType::Op { left: 0, right: 1 }),
         Expression::new(
             Operator::Pow,
-            0,
             ExpressionType::Right {
                 left: 2,
                 right: 0.5,
@@ -98,8 +92,8 @@ fn pythagoras_expression() {
 #[should_panic]
 fn operant_not_number_next() {
     let tokens = [
-        token_number!(0, 1.0),
-        token_operator!(0, Operator::Sub),
+        token_number!(1.0),
+        token_operator!(Operator::Sub),
         token_number!(1, 1.0),
         token_operator!(1, Operator::Mul),
         token_operator!(1, Operator::Mul),
@@ -112,8 +106,8 @@ fn operant_not_number_next() {
 #[should_panic]
 fn operant_not_number_prev() {
     let tokens = [
-        token_number!(0, 1.0),
-        token_operator!(0, Operator::Sub),
+        token_number!(1.0),
+        token_operator!(Operator::Sub),
         token_operator!(1, Operator::Add),
         token_operator!(1, Operator::Pow),
         token_number!(1, 1.0),
@@ -126,13 +120,12 @@ fn operant_not_number_prev() {
 fn expression_display() {
     println!(
         "{}",
-        Expression::new(Operator::Add, 0, ExpressionType::Op { left: 1, right: 2 })
+        Expression::new(Operator::Add, ExpressionType::Op { left: 1, right: 2 })
     );
     println!(
         "{}",
         Expression::new(
             Operator::Add,
-            0,
             ExpressionType::Left {
                 left: 1.0,
                 right: 2
@@ -143,7 +136,6 @@ fn expression_display() {
         "{}",
         Expression::new(
             Operator::Add,
-            0,
             ExpressionType::Right {
                 left: 1,
                 right: 1.0
@@ -154,7 +146,6 @@ fn expression_display() {
         "{}",
         Expression::new(
             Operator::Add,
-            0,
             ExpressionType::Whole {
                 left: 1.0,
                 right: 1.0
@@ -170,14 +161,14 @@ fn expression_err_display() {
         "{}",
         ExpressionParsingError::OperantNotNumber {
             left: false,
-            token: token_operator!(0, Operator::Add)
+            token: token_operator!(Operator::Add)
         }
     );
     println!(
         "{}",
         ExpressionParsingError::OperantNotNumber {
             left: true,
-            token: token_operator!(0, Operator::Add)
+            token: token_operator!(Operator::Add)
         }
     );
 }
@@ -208,7 +199,6 @@ fn invalid_first_expr_whole() {
     let exprs = vec![
         Expression::new(
             Operator::Mul,
-            0,
             ExpressionType::Left {
                 left: 5.0,
                 right: 1,
@@ -216,7 +206,6 @@ fn invalid_first_expr_whole() {
         ),
         Expression::new(
             Operator::Add,
-            0,
             ExpressionType::Whole {
                 left: 2.0,
                 right: 2.0,
@@ -234,7 +223,6 @@ fn invalid_reference_error() {
     let exprs = vec![
         Expression::new(
             Operator::Mul,
-            0,
             ExpressionType::Whole {
                 left: 5.0,
                 right: 1.0,
@@ -242,7 +230,6 @@ fn invalid_reference_error() {
         ),
         Expression::new(
             Operator::Add,
-            0,
             ExpressionType::Left {
                 left: 2.0,
                 right: 2,
@@ -263,7 +250,6 @@ fn invalid_unreference_expr() {
     let exprs = vec![
         Expression::new(
             Operator::Mul,
-            0,
             ExpressionType::Whole {
                 left: 5.0,
                 right: 1.0,
@@ -271,7 +257,6 @@ fn invalid_unreference_expr() {
         ),
         Expression::new(
             Operator::Add,
-            0,
             ExpressionType::Whole {
                 left: 1.0,
                 right: 2.0,

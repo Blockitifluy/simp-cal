@@ -21,7 +21,7 @@ fn tokenize_cal() {
 
 #[test]
 fn display_test() {
-    let token = token_number!(0, 2.0);
+    let token = token_number!(2.0);
 
     println!("{token}");
 }

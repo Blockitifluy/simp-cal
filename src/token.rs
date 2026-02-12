@@ -13,6 +13,9 @@ macro_rules! token_operator {
     ($bracket_count:expr, $oper:expr) => {
         Token::new($bracket_count, TokenType::Operator($oper))
     };
+    ($oper:expr) => {
+        Token::new(0, TokenType::Operator($oper))
+    };
 }
 
 /// Creates a new `Number` token.
@@ -23,6 +26,9 @@ macro_rules! token_operator {
 macro_rules! token_number {
     ($bracket_count:expr, $num:expr) => {
         Token::new($bracket_count, TokenType::Number($num))
+    };
+    ($num:expr) => {
+        Token::new(0, TokenType::Number($num))
     };
 }
 

@@ -11,8 +11,6 @@ use std::{error::Error, fmt};
 pub struct Expression {
     /// The operator of the expression.
     pub operator: Operator,
-    /// The amount of brackets wrapped around the expression.
-    pub bracket_count: i32,
     /// The type of expression.
     /// # Example
     /// `Whole` means both operants are a number.
@@ -22,14 +20,12 @@ impl Expression {
     /// Creates a new expression.
     /// # Arguements
     /// - `operator`: the operator of the expression e.g. _+_ (for add) or _/_ (for divide)
-    /// - `bracket_count`: the amount of brackets wrapped around the expression
     /// - `expr_type`: the type of expression
     /// # Returns
     /// A new `Expression`
-    pub const fn new(operator: Operator, bracket_count: i32, expr_type: ExpressionType) -> Self {
+    pub const fn new(operator: Operator, expr_type: ExpressionType) -> Self {
         Self {
             operator,
-            bracket_count,
             expr_type,
         }
     }
@@ -214,7 +210,6 @@ fn operation_in_cal_to_expr(
     if taken_tokens.is_empty() {
         Ok(Expression::new(
             proc_oper.operator,
-            proc_oper.bracket_count,
             ExpressionType::Whole {
                 left: prev,
                 right: next,
@@ -225,7 +220,6 @@ fn operation_in_cal_to_expr(
 
         Ok(Expression::new(
             proc_oper.operator,
-            proc_oper.bracket_count,
             get_expression_type(prev, next, prev_expr, next_expr),
         ))
     }
