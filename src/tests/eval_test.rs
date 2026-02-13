@@ -1,7 +1,8 @@
 use crate::{
     eval::{self, eval_calculation},
-    expression::{Expression, ExpressionType, tree_tokens},
-    operator::InfixOperator,
+    expr_left, expr_op, expr_right, expr_whole,
+    expression::*,
+    operator::*,
     tests::examples::{CALCULATION_EXAMPLE, EXAMPLE_RESULT},
     token::parse_tokens,
 };
@@ -17,21 +18,9 @@ fn eval_cal() {
 fn eval_cal_op() {
     // Should equal 13.0
     let expr = [
-        Expression::new(
-            InfixOperator::Mul,
-            ExpressionType::Whole {
-                left: 2.0,
-                right: 2.0,
-            },
-        ),
-        Expression::new(
-            InfixOperator::Mul,
-            ExpressionType::Whole {
-                left: 3.0,
-                right: 3.0,
-            },
-        ),
-        Expression::new(InfixOperator::Add, ExpressionType::Op { left: 0, right: 1 }),
+        expr_whole!(InfixOperator::Mul, 2.0, 2.0),
+        expr_whole!(InfixOperator::Mul, 3.0, 3.0),
+        expr_op!(InfixOperator::Add, 0, 1),
     ];
 
     assert_eq!(eval_calculation(&expr).unwrap(), 13.0);
@@ -40,26 +29,14 @@ fn eval_cal_op() {
 #[test]
 #[should_panic]
 fn unordered_expr_left() {
-    let expr = [Expression::new(
-        InfixOperator::Add,
-        ExpressionType::Left {
-            left: 2.0,
-            right: 2,
-        },
-    )];
+    let expr = [expr_left!(InfixOperator::Add, 2.0, 2)];
     eval_calculation(&expr).unwrap();
 }
 
 #[test]
 #[should_panic]
 fn unordered_expr_right() {
-    let expr = [Expression::new(
-        InfixOperator::Add,
-        ExpressionType::Right {
-            left: 2,
-            right: 2.0,
-        },
-    )];
+    let expr = [expr_right!(InfixOperator::Add, 2, 2.0)];
     eval_calculation(&expr).unwrap();
 }
 
@@ -67,21 +44,9 @@ fn unordered_expr_right() {
 #[should_panic]
 fn unordered_expr_op_right() {
     let expr = [
-        Expression::new(
-            InfixOperator::Mul,
-            ExpressionType::Whole {
-                left: 2.0,
-                right: 2.0,
-            },
-        ),
-        Expression::new(
-            InfixOperator::Add,
-            ExpressionType::Whole {
-                left: 2.0,
-                right: 2.0,
-            },
-        ),
-        Expression::new(InfixOperator::Add, ExpressionType::Op { left: 0, right: 3 }),
+        expr_whole!(InfixOperator::Mul, 2.0, 2.0),
+        expr_whole!(InfixOperator::Add, 2.0, 2.0),
+        expr_op!(InfixOperator::Add, 0, 3),
     ];
 
     eval_calculation(&expr).unwrap();
@@ -91,21 +56,9 @@ fn unordered_expr_op_right() {
 #[should_panic]
 fn unordered_expr_op_left() {
     let expr = [
-        Expression::new(
-            InfixOperator::Mul,
-            ExpressionType::Whole {
-                left: 2.0,
-                right: 2.0,
-            },
-        ),
-        Expression::new(
-            InfixOperator::Add,
-            ExpressionType::Whole {
-                left: 2.0,
-                right: 2.0,
-            },
-        ),
-        Expression::new(InfixOperator::Add, ExpressionType::Op { left: 5, right: 1 }),
+        expr_whole!(InfixOperator::Mul, 2.0, 2.0),
+        expr_whole!(InfixOperator::Add, 2.0, 2.0),
+        expr_op!(InfixOperator::Add, 5, 1),
     ];
     eval_calculation(&expr).unwrap();
 }
@@ -117,13 +70,7 @@ fn eval_err_display() {
         eval::EvalCalculationErr::UnorderedExpressions {
             index: 0,
             is_left: false,
-            expr: Expression::new(
-                InfixOperator::Sub,
-                ExpressionType::Left {
-                    left: 2.0,
-                    right: 1
-                }
-            )
+            expr: expr_left!(InfixOperator::Sub, 2.0, 1)
         }
     );
     println!(
@@ -131,13 +78,7 @@ fn eval_err_display() {
         eval::EvalCalculationErr::UnorderedExpressions {
             index: 0,
             is_left: true,
-            expr: Expression::new(
-                InfixOperator::Sub,
-                ExpressionType::Right {
-                    left: 1,
-                    right: 2.0
-                }
-            )
+            expr: expr_right!(InfixOperator::Sub, 1, 2.0),
         }
     );
 }

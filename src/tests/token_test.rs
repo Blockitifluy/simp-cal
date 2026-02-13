@@ -86,8 +86,8 @@ fn is_type() {
             )
         } else {
             assert_eq!(
-                tok.token_type.is_operator(),
-                EXAMPLE_TOKENS[i].token_type.is_operator()
+                tok.token_type.is_infix(),
+                EXAMPLE_TOKENS[i].token_type.is_infix()
             )
         }
     }
@@ -105,8 +105,8 @@ fn unwrap_type() {
             )
         } else {
             assert_eq!(
-                tok.token_type.unwrap_operator(),
-                EXAMPLE_TOKENS[i].token_type.unwrap_operator()
+                tok.token_type.unwrap_infix(),
+                EXAMPLE_TOKENS[i].token_type.unwrap_infix()
             )
         }
     }
@@ -123,7 +123,7 @@ fn unwrap_number_panic() {
 #[should_panic]
 fn unwrap_operator_panic() {
     let tokens = parse_tokens("1+1").unwrap();
-    tokens[0].token_type.unwrap_operator();
+    tokens[0].token_type.unwrap_infix();
 }
 
 #[test]

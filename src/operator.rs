@@ -2,31 +2,14 @@
 use crate::token::{Token, TokenType};
 use std::fmt;
 
-//TODO: implement the new Operator enum
-
-/// The type of `Operator`.
-/// This controls the amount of operants it can have, and the position of the operator symbol.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Operator {
-    /// Inbetween 2 operants, such as '1 + 1'
-    Infix(InfixOperator),
-    /// Before or after 2 operants, such as '1 - 1'
-    Unary(UnaryOperator),
-}
-impl Operator {
-    /// Consumes `Self` and converts it as a dynamic `OperatorTrait`.
-    /// # Returns
-    /// `dyn OperatorTrait`
-    pub fn get_inner_operator(self) -> Box<dyn OperatorTrait> {
-        match self {
-            Self::Infix(op) => Box::new(op),
-            Self::Unary(op) => Box::new(op),
-        }
-    }
-}
+// TODO: implement the new Operator enum
+// TODO: multiple size variable
 
 /// A common trait that every operator type implements.
-pub trait OperatorTrait {
+pub trait OperatorTrait
+where
+    Self: fmt::Display,
+{
     /// Gets the `Operator` correlating to a mathmatical symbol.
     /// # Arguements
     /// - `sign`: the mathmatical symbol
@@ -68,6 +51,7 @@ fn factoral(num: f32) -> f32 {
 
 /// The type of the `UnaryOperator` as in the position of the operator
 #[repr(u8)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum UnaryType {
     /// After the operant
     Suffix,
@@ -110,6 +94,18 @@ impl UnaryOperator {
             Self::Factorial => UnaryType::Suffix,
         }
     }
+
+    /// Gets all `UnaryOperator`s that are either the type of `Suffix` or `Prefix`.
+    /// # Arguements
+    /// - `unary_type`: the unary type to be searched
+    /// # Returns
+    /// A vec of `UnaryOperator`s.
+    pub fn get_operators_of_unary_type(unary_type: &UnaryType) -> Vec<Self> {
+        match unary_type {
+            UnaryType::Prefix => vec![Self::Negate, Self::BitNot],
+            UnaryType::Suffix => vec![Self::Factorial],
+        }
+    }
 }
 
 impl OperatorTrait for UnaryOperator {
@@ -132,8 +128,21 @@ impl OperatorTrait for UnaryOperator {
 
     fn get_binding_power(&self) -> i32 {
         match self {
-            _ => 0, // Everything has the same binding power as it doesn't matter
+            Self::Negate | Self::BitNot => 10,
+            Self::Factorial => 9,
         }
+    }
+}
+
+impl Into<Operator> for UnaryOperator {
+    fn into(self) -> Operator {
+        Operator::Unary(self)
+    }
+}
+
+impl fmt::Display for UnaryOperator {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.as_sign())
     }
 }
 
@@ -200,9 +209,44 @@ impl OperatorTrait for InfixOperator {
     }
 }
 
+impl Into<Operator> for InfixOperator {
+    fn into(self) -> Operator {
+        Operator::Infix(self)
+    }
+}
+
 impl fmt::Display for InfixOperator {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.as_sign())
+    }
+}
+
+/// A wrapper of all types of `Operator`s.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Operator {
+    /// An infix operator (e.g. 1 + 1)
+    Infix(InfixOperator),
+    /// An unary operator (e.g. 1! or -1), that could be either suffix or prefix.
+    Unary(UnaryOperator),
+}
+impl Operator {
+    /// Converts `Self` into a borrow of the trait object `OperatorTrait`.
+    /// # Returns
+    /// A borrow the trait object `OperatorTrait`.
+    pub fn to_dyn(&self) -> &dyn OperatorTrait {
+        match self {
+            Self::Infix(op) => op as &dyn OperatorTrait,
+            Self::Unary(op) => op as &dyn OperatorTrait,
+        }
+    }
+}
+
+impl fmt::Display for Operator {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Infix(infix) => write!(f, "{infix}"),
+            Self::Unary(unary) => write!(f, "{unary}"),
+        }
     }
 }
 
@@ -212,7 +256,7 @@ pub struct ProcessedOperator {
     /// a amount of brackets wrapped around the `ProcessedOperator`.
     pub bracket_count: i32,
     /// The operator
-    pub operator: InfixOperator,
+    pub operator: Operator,
     /// The index of the `ProcessedOperator` inside the original collection of tokens.
     pub index: usize,
 }
@@ -220,11 +264,41 @@ impl ProcessedOperator {
     /// Creates a new `ProcessedOperator`.
     /// # Arguements
     /// - `bracket_count`: the amount of brackets wrapped around the `ProcessedOperator`
-    /// - `operator`: the operator
+    /// - `operator`: an infix operator
     /// - `index`: the index of the `ProcessedOperator` inside the original collection of tokens.
     /// # Returns
     /// A new `ProcessedOperator`
-    pub const fn new(bracket_count: i32, operator: InfixOperator, index: usize) -> Self {
+    pub const fn new_infix(bracket_count: i32, operator: InfixOperator, index: usize) -> Self {
+        Self {
+            bracket_count,
+            operator: Operator::Infix(operator),
+            index,
+        }
+    }
+
+    /// Creates a new `ProcessedOperator`.
+    /// # Arguements
+    /// - `bracket_count`: the amount of brackets wrapped around the `ProcessedOperator`
+    /// - `operator`: an unary operator
+    /// - `index`: the index of the `ProcessedOperator` inside the original collection of tokens.
+    /// # Returns
+    /// A new `ProcessedOperator`
+    pub const fn new_unary(bracket_count: i32, operator: UnaryOperator, index: usize) -> Self {
+        Self {
+            bracket_count,
+            operator: Operator::Unary(operator),
+            index,
+        }
+    }
+
+    /// Creates a new `ProcessedOperator`.
+    /// # Arguements
+    /// - `bracket_count`: the amount of brackets wrapped around the `ProcessedOperator`
+    /// - `operator`: an unary operator
+    /// - `index`: the index of the `ProcessedOperator` inside the original collection of tokens.
+    /// # Returns
+    /// A new `ProcessedOperator`
+    pub const fn new(bracket_count: i32, operator: Operator, index: usize) -> Self {
         Self {
             bracket_count,
             operator,
@@ -236,7 +310,8 @@ impl ProcessedOperator {
     /// # Returns
     /// The binding power of the operator
     pub fn binding_power(&self) -> i32 {
-        self.operator.get_binding_power()
+        let oper_dyn: &dyn OperatorTrait = self.operator.to_dyn();
+        oper_dyn.get_binding_power()
     }
 }
 
@@ -265,11 +340,10 @@ pub fn get_operator_in_tokens(tokens: &[Token]) -> Vec<ProcessedOperator> {
     tokens
         .iter()
         .enumerate()
-        .filter_map(|(i, t)| {
-            let TokenType::Operator(op) = t.token_type else {
-                return None;
-            };
-            Some(ProcessedOperator::new(t.bracket_count, op, i))
+        .filter_map(|(i, t)| match t.token_type {
+            TokenType::Infix(op) => Some(ProcessedOperator::new_infix(t.bracket_count, op, i)),
+            TokenType::Unary(op) => Some(ProcessedOperator::new_unary(t.bracket_count, op, i)),
+            _ => None,
         })
         .collect()
 }

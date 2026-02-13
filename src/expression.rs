@@ -2,6 +2,84 @@
 use crate::{operator::*, token::*};
 use std::{error::Error, fmt};
 
+/// Whole expression
+#[macro_export]
+macro_rules! expr_whole {
+    ($op:expr, $left:expr, $right:expr) => {
+        Expression::new(
+            Operator::Infix($op),
+            ExpressionType::Whole {
+                left: $left,
+                right: $right,
+            },
+        )
+    };
+}
+
+/// Left expression
+#[macro_export]
+macro_rules! expr_left {
+    ($op:expr, $left:expr, $right:expr) => {
+        Expression::new(
+            Operator::Infix($op),
+            ExpressionType::Left {
+                left: $left,
+                right: $right,
+            },
+        )
+    };
+}
+
+/// Right expression
+#[macro_export]
+macro_rules! expr_right {
+    ($op:expr, $left:expr, $right:expr) => {
+        Expression::new(
+            Operator::Infix($op),
+            ExpressionType::Right {
+                left: $left,
+                right: $right,
+            },
+        )
+    };
+}
+
+/// Op expression
+#[macro_export]
+macro_rules! expr_op {
+    ($op:expr, $left:expr, $right:expr) => {
+        Expression::new(
+            Operator::Infix($op),
+            ExpressionType::Op {
+                left: $left,
+                right: $right,
+            },
+        )
+    };
+}
+
+/// Whole unary expression
+#[macro_export]
+macro_rules! expr_unary_whole {
+    ($op:expr, $operant:expr) => {
+        Expression::new(
+            Operator::Infix($op),
+            ExpressionType::UnaryWhole { left: $operant },
+        )
+    };
+}
+
+/// Op unary expression
+#[macro_export]
+macro_rules! expr_unary_op {
+    ($op:expr, $operant:expr) => {
+        Expression::new(
+            Operator::Infix($op),
+            ExpressionType::UnaryOp { left: $operant },
+        )
+    };
+}
+
 /// A expressions: a combonation of tokens. Has an operator and two operants (which could be a number or an index of an expression).
 ///
 /// # Example
@@ -10,7 +88,7 @@ use std::{error::Error, fmt};
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Expression {
     /// The operator of the expression.
-    pub operator: InfixOperator,
+    pub operator: Operator,
     /// The type of expression.
     /// # Example
     /// `Whole` means both operants are a number.
@@ -23,7 +101,7 @@ impl Expression {
     /// - `expr_type`: the type of expression
     /// # Returns
     /// A new `Expression`
-    pub const fn new(operator: InfixOperator, expr_type: ExpressionType) -> Self {
+    pub const fn new(operator: Operator, expr_type: ExpressionType) -> Self {
         Self {
             operator,
             expr_type,
@@ -33,7 +111,8 @@ impl Expression {
 
 impl fmt::Display for Expression {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let operator = &self.operator;
+        let operator = self.operator;
+
         match self.expr_type {
             ExpressionType::Op { left, right } => {
                 write!(f, "expr({left}) {operator} expr({right})")
@@ -45,6 +124,32 @@ impl fmt::Display for Expression {
                 write!(f, "expr({left}) {operator} {right}")
             }
             ExpressionType::Whole { left, right } => write!(f, "{left} {operator} {right}"),
+            ExpressionType::UnaryWhole { operant } => {
+                let Operator::Unary(unary) = self.operator else {
+                    return write!(
+                        f,
+                        "invalid expression ExpressionType of unary type because operator is not unary"
+                    );
+                };
+
+                match unary.unary_type() {
+                    UnaryType::Prefix => write!(f, "{unary}{operant}"),
+                    UnaryType::Suffix => write!(f, "{operant}{unary}"),
+                }
+            }
+            ExpressionType::UnaryOp { operant } => {
+                let Operator::Unary(unary) = operator else {
+                    return write!(
+                        f,
+                        "invalid expression ExpressionType of unary type because operator is not unary"
+                    );
+                };
+
+                match unary.unary_type() {
+                    UnaryType::Prefix => write!(f, "{unary}expr({operant})"),
+                    UnaryType::Suffix => write!(f, "expr({operant}){unary}"),
+                }
+            }
         }
     }
 }
@@ -80,6 +185,16 @@ pub enum ExpressionType {
         left: f32,
         /// Right operant
         right: f32,
+    },
+    /// An unary expression with an owned operant.
+    UnaryWhole {
+        /// Operant (owned)
+        operant: f32,
+    },
+    /// An unary expression with no operants owned.
+    UnaryOp {
+        /// Operant (not owned)
+        operant: usize,
     },
 }
 
@@ -271,6 +386,7 @@ fn fuse_taken_tokens(taken_tokens: &mut Vec<ExprBind>) {
 pub fn tree_tokens(tokens: &[Token]) -> Result<Vec<Expression>, ExpressionParsingError> {
     let mut operators = get_operator_in_tokens(tokens);
     operators.sort();
+    println!("{operators:?}");
 
     let mut expressions = Vec::<Expression>::new();
     let mut taken_tokens = Vec::<ExprBind>::new();
@@ -362,6 +478,7 @@ pub fn is_expressions_valid(exprs: &[Expression]) -> Option<ExpressionInvalidRea
                 rm_element!(left);
                 rm_element!(right);
             }
+            _ => todo!(),
         }
 
         if !is_last {

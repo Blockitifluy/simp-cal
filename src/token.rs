@@ -1,20 +1,34 @@
-//! Handles parsing tokens.
+//! Handles parsing tokens
 use core::fmt;
 use std::error::Error;
 
-use crate::operator::{InfixOperator, OperatorTrait};
+use crate::operator::{InfixOperator, OperatorTrait, UnaryOperator, UnaryType};
 
-/// Creates a new `Operator` token.
+/// Creates a new `InfixOperator` token.
 /// # Arguements
 /// - `$bracket_count` - the amount of brackets wrapped around the token
-/// - `$oper` - The operator assigned to the token.
+/// - `$oper` - the infix operator assigned to the token.
 #[macro_export]
 macro_rules! token_operator {
     ($bracket_count:expr, $oper:expr) => {
-        Token::new($bracket_count, TokenType::Operator($oper))
+        Token::new($bracket_count, TokenType::Infix($oper))
     };
     ($oper:expr) => {
-        Token::new(0, TokenType::Operator($oper))
+        Token::new(0, TokenType::Infix($oper))
+    };
+}
+
+/// Creates a new `UnaryOperator` token.
+/// # Arguements
+/// - `$bracket_count` - the amount of brackets wrapped around the token
+/// - `$oper` - the unary operator assigined to the token
+#[macro_export]
+macro_rules! token_unary {
+    ($bracket_count:expr, $oper:expr) => {
+        Token::new($bracket_count, TokenType::Unary($oper))
+    };
+    ($oper:expr) => {
+        Token::new(0, TokenType::Unary($oper))
     };
 }
 
@@ -68,24 +82,40 @@ impl fmt::Display for Token {
 /// # Examples
 /// - 10.2 is represented as a `Number(10.2)`
 /// - `+` is represented as a `Operator(Operator::Add)`
+/// # Note
+/// Unary operators are always behind their operants
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum TokenType {
     /// A single number
     Number(f32),
-    /// An operator
-    Operator(InfixOperator),
+    /// An infix operator
+    Infix(InfixOperator),
+    /// A unary operator, that could be prefix or suffix
+    Unary(UnaryOperator),
 }
 impl TokenType {
-    /// Unwraps _self_ into an `Operator`.
+    /// Unwraps _self_ into an `InfixOperator`.
     /// # Returns
-    /// An `Operator`
+    /// An `InfixOperator`
     /// # Panics
-    /// Panics when the `Token` isn't an `Operator`.
-    pub fn unwrap_operator(&self) -> InfixOperator {
-        let Self::Operator(op) = self else {
-            panic!("couldn't unwrap token into operator")
+    /// Panics when the `Token` isn't an `InfixOperator`.
+    pub fn unwrap_infix(self) -> InfixOperator {
+        let Self::Infix(op) = self else {
+            panic!("couldn't unwrap token into infix operator")
         };
-        *op
+        op
+    }
+
+    /// Unwraps _self_ into an `UnaryOperator`.
+    /// # Returns
+    /// An `UnaryOperator`
+    /// # Panics
+    /// Panics when the `Token` isn't an `UnaryOperator`.
+    pub fn unwrap_unary(self) -> UnaryOperator {
+        let Self::Unary(op) = self else {
+            panic!("couldn't unwrap token into unary operator")
+        };
+        op
     }
 
     /// Unwraps _self_ into a number.
@@ -100,9 +130,19 @@ impl TokenType {
         *num
     }
 
-    /// Returns `true`, if `Token` is a `Operator`.
+    /// Returns `true`, if `Token` is an `InfixOperator`.
+    pub fn is_infix(&self) -> bool {
+        matches!(self, Self::Infix(_))
+    }
+
+    /// Returns `true`, if `Token` is an `UnaryOperator`
+    pub fn is_unary(&self) -> bool {
+        matches!(self, Self::Unary(_))
+    }
+
+    /// Returns `true`, if `Token` is any type of `Operator`
     pub fn is_operator(&self) -> bool {
-        matches!(self, Self::Operator(_))
+        self.is_unary() || self.is_infix()
     }
 
     /// Returns `true`, if `Token` is a `Number`.
@@ -116,7 +156,7 @@ fn mul_start_bracket_handle(r: &mut Vec<Token>, bracket_count: &mut i32) {
         return;
     };
 
-    if last_token.bracket_count == *bracket_count || !last_token.token_type.is_operator() {
+    if last_token.bracket_count == *bracket_count || !last_token.token_type.is_infix() {
         r.push(token_operator!(*bracket_count - 1, InfixOperator::Mul));
     }
 }
@@ -134,6 +174,7 @@ pub fn parse_tokens(cal: &str) -> Result<Vec<Token>, TokenParseError> {
     let mut num_b = String::with_capacity(16);
     let mut bracket_count = 0;
     let mut last_bracket = 0usize;
+    let mut prev_infix = false;
 
     macro_rules! parse_b {
         () => {
@@ -170,17 +211,27 @@ pub fn parse_tokens(cal: &str) -> Result<Vec<Token>, TokenParseError> {
         }
 
         // operators and numbers
-        let Some(operator) = InfixOperator::get_operator_from_sign(c) else {
-            if c.is_numeric() || c == '.' {
-                num_b.push(c);
-                continue;
-            }
+        if let Some(infix) = InfixOperator::get_operator_from_sign(c)
+            && !prev_infix
+        {
+            prev_infix = true;
+            parse_b!();
+            r.push(token_operator!(bracket_count, infix));
+            continue;
+        } else if let Some(unary) = UnaryOperator::get_operator_from_sign(c) {
+            prev_infix = false;
+            r.push(token_unary!(bracket_count, unary));
+            parse_b!();
+            continue;
+        }
+        prev_infix = false;
 
-            return Err(TokenParseError::InvalidCharacter { character: c });
-        };
+        if c.is_numeric() || c == '.' {
+            num_b.push(c);
+            continue;
+        }
 
-        parse_b!();
-        r.push(token_operator!(bracket_count, operator));
+        return Err(TokenParseError::InvalidCharacter { character: c });
     }
 
     parse_b!();
@@ -260,11 +311,22 @@ pub fn reconstruct_tokens(tokens: &[Token], include_spacing: bool) -> String {
 
         match t.token_type {
             TokenType::Number(num) => b.push_str(&num.to_string()),
-            TokenType::Operator(op) => {
+            TokenType::Infix(op) => {
                 if !include_spacing {
                     b.push_str(op.as_sign());
                 } else {
                     b.push_str(&format!(" {} ", op.as_sign()));
+                }
+            }
+            TokenType::Unary(op) => {
+                if op.unary_type() == UnaryType::Prefix {
+                    if !include_spacing {
+                        b.push_str(op.as_sign());
+                    } else {
+                        b.push_str(&format!(" {}", op.as_sign()));
+                    }
+                } else {
+                    todo!();
                 }
             }
         }

@@ -1,9 +1,10 @@
 use crate::{
+    expr_left, expr_op, expr_right, expr_whole,
     expression::{
         ExprBind, Expression, ExpressionInvalidReason, ExpressionParsingError, ExpressionType,
         is_expressions_valid, tree_tokens,
     },
-    operator::InfixOperator,
+    operator::*,
     token::{Token, TokenType, parse_tokens},
     token_number, token_operator,
 };
@@ -22,28 +23,10 @@ fn expression_cal() {
 fn expression_cal_fuse() {
     // 10 * (2 + 1 - (6 * 2))
     let expression_test = vec![
-        Expression::new(
-            InfixOperator::Mul,
-            ExpressionType::Whole {
-                left: 6.0,
-                right: 2.0,
-            },
-        ),
-        Expression::new(
-            InfixOperator::Add,
-            ExpressionType::Whole {
-                left: 2.0,
-                right: 1.0,
-            },
-        ),
-        Expression::new(InfixOperator::Sub, ExpressionType::Op { left: 1, right: 0 }),
-        Expression::new(
-            InfixOperator::Mul,
-            ExpressionType::Left {
-                left: 10.0,
-                right: 2,
-            },
-        ),
+        expr_whole!(InfixOperator::Mul, 6.0, 2.0),
+        expr_whole!(InfixOperator::Add, 2.0, 1.0),
+        expr_op!(InfixOperator::Sub, 1, 0),
+        expr_left!(InfixOperator::Mul, 10.0, 2),
     ];
 
     assert_eq!(
@@ -57,28 +40,10 @@ fn expression_cal_fuse() {
 fn pythagoras_expression() {
     // (3^2 + 4^2)^0.5
     let expected_expr = vec![
-        Expression::new(
-            InfixOperator::Pow,
-            ExpressionType::Whole {
-                left: 3.0,
-                right: 2.0,
-            },
-        ),
-        Expression::new(
-            InfixOperator::Pow,
-            ExpressionType::Whole {
-                left: 4.0,
-                right: 2.0,
-            },
-        ),
-        Expression::new(InfixOperator::Add, ExpressionType::Op { left: 0, right: 1 }),
-        Expression::new(
-            InfixOperator::Pow,
-            ExpressionType::Right {
-                left: 2,
-                right: 0.5,
-            },
-        ),
+        expr_whole!(InfixOperator::Pow, 3.0, 2.0),
+        expr_whole!(InfixOperator::Pow, 4.0, 2.0),
+        expr_op!(InfixOperator::Add, 0, 1),
+        expr_right!(InfixOperator::Pow, 2, 0.5),
     ];
 
     assert_eq!(
@@ -118,40 +83,10 @@ fn operant_not_number_prev() {
 
 #[test]
 fn expression_display() {
-    println!(
-        "{}",
-        Expression::new(InfixOperator::Add, ExpressionType::Op { left: 1, right: 2 })
-    );
-    println!(
-        "{}",
-        Expression::new(
-            InfixOperator::Add,
-            ExpressionType::Left {
-                left: 1.0,
-                right: 2
-            }
-        )
-    );
-    println!(
-        "{}",
-        Expression::new(
-            InfixOperator::Add,
-            ExpressionType::Right {
-                left: 1,
-                right: 1.0
-            }
-        )
-    );
-    println!(
-        "{}",
-        Expression::new(
-            InfixOperator::Add,
-            ExpressionType::Whole {
-                left: 1.0,
-                right: 1.0
-            }
-        )
-    );
+    println!("{}", expr_op!(InfixOperator::Add, 1, 2));
+    println!("{}", expr_left!(InfixOperator::Add, 1.0, 2));
+    println!("{}", expr_right!(InfixOperator::Add, 1, 1.0));
+    println!("{}", expr_whole!(InfixOperator::Add, 1.0, 1.0));
 }
 
 #[test]
@@ -197,20 +132,8 @@ fn valid_expr_empty() {
 #[test]
 fn invalid_first_expr_whole() {
     let exprs = vec![
-        Expression::new(
-            InfixOperator::Mul,
-            ExpressionType::Left {
-                left: 5.0,
-                right: 1,
-            },
-        ),
-        Expression::new(
-            InfixOperator::Add,
-            ExpressionType::Whole {
-                left: 2.0,
-                right: 2.0,
-            },
-        ),
+        expr_left!(InfixOperator::Mul, 5.0, 1),
+        expr_whole!(InfixOperator::Add, 2.0, 2.0),
     ];
 
     let reason = is_expressions_valid(&exprs).unwrap();
@@ -221,20 +144,8 @@ fn invalid_first_expr_whole() {
 #[test]
 fn invalid_reference_error() {
     let exprs = vec![
-        Expression::new(
-            InfixOperator::Mul,
-            ExpressionType::Whole {
-                left: 5.0,
-                right: 1.0,
-            },
-        ),
-        Expression::new(
-            InfixOperator::Add,
-            ExpressionType::Left {
-                left: 2.0,
-                right: 2,
-            },
-        ),
+        expr_whole!(InfixOperator::Mul, 5.0, 1.0),
+        expr_left!(InfixOperator::Add, 2.0, 2),
     ];
 
     let reason = is_expressions_valid(&exprs).unwrap();
@@ -248,20 +159,8 @@ fn invalid_reference_error() {
 #[test]
 fn invalid_unreference_expr() {
     let exprs = vec![
-        Expression::new(
-            InfixOperator::Mul,
-            ExpressionType::Whole {
-                left: 5.0,
-                right: 1.0,
-            },
-        ),
-        Expression::new(
-            InfixOperator::Add,
-            ExpressionType::Whole {
-                left: 1.0,
-                right: 2.0,
-            },
-        ),
+        expr_whole!(InfixOperator::Mul, 5.0, 1.0),
+        expr_whole!(InfixOperator::Add, 1.0, 2.0),
     ];
 
     let reason = is_expressions_valid(&exprs).unwrap();

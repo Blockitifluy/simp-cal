@@ -1,6 +1,7 @@
 use crate::{
+    expr_left, expr_op, expr_right, expr_whole,
     expression::{Expression, ExpressionType},
-    operator::{InfixOperator, ProcessedOperator},
+    operator::*,
     token::{Token, TokenType},
     token_number, token_operator,
 };
@@ -27,58 +28,28 @@ pub const EXAMPLE_TOKENS: [Token; 13] = [
 ];
 
 pub const EXAMPLE_OPERATOR_INDEX: [ProcessedOperator; 6] = [
-    ProcessedOperator::new(0, InfixOperator::Mul, 1),
-    ProcessedOperator::new(1, InfixOperator::Pow, 3),
-    ProcessedOperator::new(2, InfixOperator::Sub, 5),
-    ProcessedOperator::new(1, InfixOperator::Div, 7),
-    ProcessedOperator::new(2, InfixOperator::Mul, 9),
-    ProcessedOperator::new(0, InfixOperator::Add, 11),
+    ProcessedOperator::new_infix(0, InfixOperator::Mul, 1),
+    ProcessedOperator::new_infix(1, InfixOperator::Pow, 3),
+    ProcessedOperator::new_infix(2, InfixOperator::Sub, 5),
+    ProcessedOperator::new_infix(1, InfixOperator::Div, 7),
+    ProcessedOperator::new_infix(2, InfixOperator::Mul, 9),
+    ProcessedOperator::new_infix(0, InfixOperator::Add, 11),
 ];
 
 pub const EXAMPLE_OPERATORS_INDEX_SORT: [ProcessedOperator; 6] = [
-    ProcessedOperator::new(2, InfixOperator::Mul, 9),
-    ProcessedOperator::new(2, InfixOperator::Sub, 5),
-    ProcessedOperator::new(1, InfixOperator::Pow, 3),
-    ProcessedOperator::new(1, InfixOperator::Div, 7),
-    ProcessedOperator::new(0, InfixOperator::Mul, 1),
-    ProcessedOperator::new(0, InfixOperator::Add, 11),
+    ProcessedOperator::new_infix(2, InfixOperator::Mul, 9),
+    ProcessedOperator::new_infix(2, InfixOperator::Sub, 5),
+    ProcessedOperator::new_infix(1, InfixOperator::Pow, 3),
+    ProcessedOperator::new_infix(1, InfixOperator::Div, 7),
+    ProcessedOperator::new_infix(0, InfixOperator::Mul, 1),
+    ProcessedOperator::new_infix(0, InfixOperator::Add, 11),
 ];
 
 pub const EXAMPLE_EXPRESSIONS: [Expression; 6] = [
-    Expression::new(
-        InfixOperator::Mul,
-        ExpressionType::Whole {
-            left: 0.5,
-            right: 1.0,
-        },
-    ),
-    Expression::new(
-        InfixOperator::Sub,
-        ExpressionType::Whole {
-            left: 3.0,
-            right: 2.0,
-        },
-    ),
-    Expression::new(
-        InfixOperator::Pow,
-        ExpressionType::Left {
-            left: 23.0,
-            right: 1,
-        },
-    ),
-    Expression::new(InfixOperator::Div, ExpressionType::Op { left: 2, right: 0 }),
-    Expression::new(
-        InfixOperator::Mul,
-        ExpressionType::Left {
-            left: 2.0,
-            right: 3,
-        },
-    ),
-    Expression::new(
-        InfixOperator::Add,
-        ExpressionType::Right {
-            left: 4,
-            right: 100.0,
-        },
-    ),
+    expr_whole!(InfixOperator::Mul, 0.5, 1.0),
+    expr_whole!(InfixOperator::Sub, 3.0, 2.0),
+    expr_left!(InfixOperator::Pow, 23.0, 1),
+    expr_op!(InfixOperator::Div, 2, 0),
+    expr_left!(InfixOperator::Mul, 2.0, 3),
+    expr_right!(InfixOperator::Add, 4, 100.0),
 ];

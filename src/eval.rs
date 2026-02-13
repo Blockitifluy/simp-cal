@@ -40,6 +40,7 @@ fn get_operants_operator_of_expr(
             };
             Ok((*l_val, *r_val))
         }
+        _ => todo!(),
     }
 }
 
@@ -54,7 +55,8 @@ pub fn eval_calculation(exprs: &[Expression]) -> Result<f32, EvalCalculationErr>
     for expr in exprs.iter() {
         let (l_ant, r_ant) = get_operants_operator_of_expr(expr, &results)?;
 
-        let compute: f32 = expr.operator.compute(l_ant, r_ant);
+        // TODO:
+        let compute: f32 = todo!(); // expr.operator.compute(l_ant, r_ant);
 
         results.push(compute);
     }
