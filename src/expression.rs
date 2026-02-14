@@ -2,8 +2,6 @@
 use crate::{operator::*, token::*};
 use std::{error::Error, fmt};
 
-// WARN: Double unary (suffix and prefix or prefix and prefix) is not working
-
 /// Whole expression
 #[macro_export]
 macro_rules! expr_whole {

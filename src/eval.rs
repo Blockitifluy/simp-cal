@@ -43,7 +43,7 @@ fn get_operants_operator_of_expr(
             };
             Ok((*l_val, *r_val))
         }
-        _ => panic!("infix expected"),
+        _ => unreachable!("infix unreachable"),
     }
 }
 
@@ -70,7 +70,7 @@ fn eval_unary(
             };
             Ok(op.compute(*num))
         }
-        _ => panic!("unary expected"),
+        _ => unreachable!("unary expected"),
     }
 }
 

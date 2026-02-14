@@ -2,7 +2,6 @@
 use crate::token::{BracketLevel, Token, TokenType};
 use std::fmt;
 // TODO: multiple size operators
-// WARN: THE SUFFIX UNARY OPERATOR DOESN'T WORK AS EXPECTED
 
 /// The type used to store an operator's binding power
 pub type BindPower = u8;
@@ -36,6 +35,7 @@ where
     fn get_binding_power(&self) -> BindPower;
 }
 
+#[allow(dead_code)]
 fn factoral(num: f32) -> f32 {
     if num < 1.0 {
         return 0.0;
@@ -83,7 +83,7 @@ impl UnaryOperator {
         match self {
             Self::Negate => -operant,
             Self::BitNot => !(operant as u32) as f32,
-            Self::Factorial => factoral(operant),
+            Self::Factorial => unimplemented!(), // factoral(operant),
         }
     }
 
@@ -93,7 +93,7 @@ impl UnaryOperator {
     pub fn unary_type(&self) -> UnaryType {
         match self {
             Self::Negate | Self::BitNot => UnaryType::Prefix,
-            Self::Factorial => UnaryType::Suffix,
+            Self::Factorial => unimplemented!(), //UnaryType::Suffix,
         }
     }
 
@@ -105,7 +105,7 @@ impl UnaryOperator {
     pub fn get_operators_of_unary_type(unary_type: &UnaryType) -> Vec<Self> {
         match unary_type {
             UnaryType::Prefix => vec![Self::Negate, Self::BitNot],
-            UnaryType::Suffix => vec![Self::Factorial],
+            UnaryType::Suffix => unimplemented!(), // vec![Self::Factorial],
         }
     }
 }
@@ -115,7 +115,7 @@ impl OperatorTrait for UnaryOperator {
         match sign {
             '-' => Some(Self::Negate),
             '~' => Some(Self::BitNot),
-            '!' => Some(Self::Factorial),
+            '!' => unimplemented!(), // Some(Self::Factorial),
             _ => None,
         }
     }
@@ -124,14 +124,14 @@ impl OperatorTrait for UnaryOperator {
         match self {
             UnaryOperator::Negate => "-",
             UnaryOperator::BitNot => "~",
-            UnaryOperator::Factorial => "!",
+            UnaryOperator::Factorial => unimplemented!(), // "!",
         }
     }
 
     fn get_binding_power(&self) -> BindPower {
         match self {
             Self::Negate | Self::BitNot => 10,
-            Self::Factorial => 9,
+            Self::Factorial => unimplemented!(), // 9,
         }
     }
 }
