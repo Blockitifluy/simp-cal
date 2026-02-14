@@ -7,10 +7,10 @@ use crate::{
 };
 
 macro_rules! expr_err {
-    ($index:expr, $is_left: literal, $expr:  expr) => {
+    ($index:expr, $position: expr, $expr:  expr) => {
         return Err(EvalCalculationErr::UnorderedExpressions {
             index: $index,
-            is_left: $is_left,
+            position: $position,
             expr: $expr,
         })
     };
@@ -24,22 +24,22 @@ fn get_operants_operator_of_expr(
         ExpressionType::Whole { left, right } => Ok((left, right)),
         ExpressionType::Left { left, right } => {
             let Some(r_val) = results.get(right) else {
-                expr_err!(right, false, *expr)
+                expr_err!(right, OperantPosition::Right, *expr)
             };
             Ok((left, *r_val))
         }
         ExpressionType::Right { left, right } => {
             let Some(l_val) = results.get(left) else {
-                expr_err!(left, true, *expr)
+                expr_err!(left, OperantPosition::Left, *expr)
             };
             Ok((*l_val, right))
         }
         ExpressionType::Op { left, right } => {
             let Some(l_val) = results.get(left) else {
-                expr_err!(left, false, *expr)
+                expr_err!(left, OperantPosition::Left, *expr)
             };
             let Some(r_val) = results.get(right) else {
-                expr_err!(right, true, *expr)
+                expr_err!(right, OperantPosition::Right, *expr)
             };
             Ok((*l_val, *r_val))
         }
@@ -66,7 +66,7 @@ fn eval_unary(
         ExpressionType::UnaryWhole { operant } => Ok(op.compute(operant)),
         ExpressionType::UnaryOp { operant } => {
             let Some(num) = results.get(operant) else {
-                expr_err!(operant, false, *expr)
+                expr_err!(operant, OperantPosition::Unary, *expr)
             };
             Ok(op.compute(*num))
         }
@@ -104,8 +104,8 @@ pub enum EvalCalculationErr {
     UnorderedExpressions {
         /// The index of the linked expression
         index: usize,
-        /// Is the operant on the left
-        is_left: bool,
+        /// The position of the `Operant` relative to an operator
+        position: OperantPosition,
         /// The expression raising the error
         expr: Expression,
     },
@@ -115,12 +115,11 @@ impl fmt::Display for EvalCalculationErr {
         match self {
             Self::UnorderedExpressions {
                 index,
-                is_left,
+                position,
                 expr,
             } => write!(
                 f,
-                "expressions are not in a valid order ({expr} {} linked {index})",
-                if *is_left { "left" } else { "right" }
+                "expressions are not in a valid order ({expr} {position} linked {index})",
             ),
         }
     }

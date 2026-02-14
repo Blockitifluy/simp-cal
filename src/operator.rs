@@ -51,6 +51,27 @@ fn factoral(num: f32) -> f32 {
     f as f32
 }
 
+/// Describes an operant position relative to an `Operator`
+#[derive(Debug)]
+#[repr(u8)]
+pub enum OperantPosition {
+    /// To the left: _x_ + y
+    Left,
+    /// To the right: x + _y_
+    Right,
+    /// A unary value: -_x_
+    Unary,
+}
+
+impl fmt::Display for OperantPosition {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Left => write!(f, "left"),
+            Self::Right => write!(f, "right"),
+            Self::Unary => write!(f, "unary"),
+        }
+    }
+}
 /// The type of the `UnaryOperator` as in the position of the operator
 #[repr(u8)]
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]

@@ -274,13 +274,13 @@ fn get_expression_type(
         (None, None) => {
             let TokenType::Number(prev) = prev_token.token_type else {
                 return Err(ExpressionParsingError::OperantNotNumber {
-                    left: true,
+                    position: OperantPosition::Left,
                     token: prev_token,
                 });
             };
             let TokenType::Number(next) = next_token.token_type else {
                 return Err(ExpressionParsingError::OperantNotNumber {
-                    left: false,
+                    position: OperantPosition::Right,
                     token: next_token,
                 });
             };
@@ -292,7 +292,7 @@ fn get_expression_type(
         (None, Some(r_expr)) => {
             let TokenType::Number(prev) = prev_token.token_type else {
                 return Err(ExpressionParsingError::OperantNotNumber {
-                    left: true,
+                    position: OperantPosition::Left,
                     token: prev_token,
                 });
             };
@@ -304,7 +304,7 @@ fn get_expression_type(
         (Some(l_expr), None) => {
             let TokenType::Number(next) = next_token.token_type else {
                 return Err(ExpressionParsingError::OperantNotNumber {
-                    left: false,
+                    position: OperantPosition::Right,
                     token: next_token,
                 });
             };
@@ -345,20 +345,30 @@ fn expr_infix(
     taken_tokens: &[ExprBind],
 ) -> Result<Expression, ExpressionParsingError> {
     let place = &proc_oper.index;
-    // TODO: make indexing non-panicking
-    let (prev_token, next_token) = (tokens[place - 1], tokens[place + 1]);
+    let Some(prev_token) = tokens.get(place - 1) else {
+        return Err(ExpressionParsingError::NoNeighbouringOperants {
+            position: OperantPosition::Left,
+            place: place - 1,
+        });
+    };
+    let Some(next_token) = tokens.get(place + 1) else {
+        return Err(ExpressionParsingError::NoNeighbouringOperants {
+            position: OperantPosition::Right,
+            place: place + 1,
+        });
+    };
 
     if taken_tokens.is_empty() {
         let TokenType::Number(prev) = prev_token.token_type else {
             return Err(ExpressionParsingError::OperantNotNumber {
-                left: true,
-                token: prev_token,
+                position: OperantPosition::Left,
+                token: *prev_token,
             });
         };
         let TokenType::Number(next) = next_token.token_type else {
             return Err(ExpressionParsingError::OperantNotNumber {
-                left: false,
-                token: next_token,
+                position: OperantPosition::Right,
+                token: *next_token,
             });
         };
 
@@ -372,7 +382,7 @@ fn expr_infix(
     } else {
         let (prev_expr, next_expr) = get_neighbouring_expressions(*place, taken_tokens);
 
-        let expr_type = get_expression_type(prev_token, next_token, prev_expr, next_expr)?;
+        let expr_type = get_expression_type(*prev_token, *next_token, prev_expr, next_expr)?;
 
         Ok(Expression::new(proc_oper.operator, expr_type))
     }
@@ -384,14 +394,18 @@ fn expr_unary(
     taken_tokens: &[ExprBind],
 ) -> Result<Expression, ExpressionParsingError> {
     let place = &proc_oper.index;
-    let next_tok = tokens[place + 1];
+    let Some(next_tok) = tokens.get(place + 1) else {
+        return Err(ExpressionParsingError::NoNeighbouringOperants {
+            position: OperantPosition::Unary,
+            place: *place + 1,
+        });
+    };
 
     if taken_tokens.is_empty() {
-        // TODO: make indexing non-panicking
         let TokenType::Number(operant) = next_tok.token_type else {
             return Err(ExpressionParsingError::OperantNotNumber {
-                left: false,
-                token: next_tok,
+                position: OperantPosition::Unary,
+                token: *next_tok,
             });
         };
         Ok(Expression::new(
@@ -399,7 +413,7 @@ fn expr_unary(
             ExpressionType::UnaryWhole { operant },
         ))
     } else {
-        match get_expr_at_place(place + 1, taken_tokens) {
+        match get_expr_at_place(*place + 1, taken_tokens) {
             Some(expr) => Ok(Expression::new(
                 proc_oper.operator,
                 ExpressionType::UnaryOp { operant: expr },
@@ -407,8 +421,8 @@ fn expr_unary(
             None => {
                 let TokenType::Number(num) = next_tok.token_type else {
                     return Err(ExpressionParsingError::OperantNotNumber {
-                        left: false,
-                        token: next_tok,
+                        position: OperantPosition::Unary,
+                        token: *next_tok,
                     });
                 };
                 Ok(Expression::new(
@@ -596,27 +610,35 @@ pub fn is_expressions_valid(exprs: &[Expression]) -> Option<ExpressionInvalidRea
 pub enum ExpressionParsingError {
     /// The operant is not a number.
     OperantNotNumber {
-        /// Is the operant to the left?
-        /// Otherwise, it's on the right
-        left: bool,
+        /// The position of the `Operant` relative to an operator
+        position: OperantPosition,
         /// The token of the operant.
         token: Token,
     },
     /// A hanging bracket found (not used).
     HangingBracket,
+    /// The operator's has no neighbour in a direction.
+    NoNeighbouringOperants {
+        /// The position of the `Operant` relative to an operator
+        position: OperantPosition,
+        /// The index of the would be operant
+        place: usize,
+    },
 }
 impl fmt::Display for ExpressionParsingError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::OperantNotNumber { left, token } => {
-                write!(
-                    f,
-                    "{} token {token:?} is not a number",
-                    if *left { "left" } else { "right" }
-                )
+            Self::OperantNotNumber { position, token } => {
+                write!(f, "{position} token {token:?} is not a number",)
             }
             Self::HangingBracket => {
                 write!(f, "hanging bracket")
+            }
+            Self::NoNeighbouringOperants { position, place } => {
+                write!(
+                    f,
+                    "neighbour to the {position} (place: {place}) was out of bounds",
+                )
             }
         }
     }

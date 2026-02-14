@@ -95,14 +95,21 @@ fn expression_err_display() {
     println!(
         "{}",
         ExpressionParsingError::OperantNotNumber {
-            left: false,
+            position: OperantPosition::Right,
             token: token_operator!(InfixOperator::Add)
         }
     );
     println!(
         "{}",
         ExpressionParsingError::OperantNotNumber {
-            left: true,
+            position: OperantPosition::Unary,
+            token: token_operator!(InfixOperator::Add)
+        }
+    );
+    println!(
+        "{}",
+        ExpressionParsingError::OperantNotNumber {
+            position: OperantPosition::Left,
             token: token_operator!(InfixOperator::Add)
         }
     );

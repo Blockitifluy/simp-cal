@@ -69,7 +69,7 @@ fn eval_err_display() {
         "{}",
         eval::EvalCalculationErr::UnorderedExpressions {
             index: 0,
-            is_left: false,
+            position: OperantPosition::Right,
             expr: expr_left!(InfixOperator::Sub, 2.0, 1)
         }
     );
@@ -77,7 +77,15 @@ fn eval_err_display() {
         "{}",
         eval::EvalCalculationErr::UnorderedExpressions {
             index: 0,
-            is_left: true,
+            position: OperantPosition::Unary,
+            expr: expr_right!(InfixOperator::Sub, 1, 2.0),
+        }
+    );
+    println!(
+        "{}",
+        eval::EvalCalculationErr::UnorderedExpressions {
+            index: 0,
+            position: OperantPosition::Left,
             expr: expr_right!(InfixOperator::Sub, 1, 2.0),
         }
     );
