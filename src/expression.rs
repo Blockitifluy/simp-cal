@@ -63,8 +63,8 @@ macro_rules! expr_op {
 macro_rules! expr_unary_whole {
     ($op:expr, $operant:expr) => {
         Expression::new(
-            Operator::Infix($op),
-            ExpressionType::UnaryWhole { left: $operant },
+            Operator::Unary($op),
+            ExpressionType::UnaryWhole { operant: $operant },
         )
     };
 }
@@ -74,7 +74,7 @@ macro_rules! expr_unary_whole {
 macro_rules! expr_unary_op {
     ($op:expr, $operant:expr) => {
         Expression::new(
-            Operator::Infix($op),
+            Operator::Unary($op),
             ExpressionType::UnaryOp { left: $operant },
         )
     };
@@ -197,6 +197,20 @@ pub enum ExpressionType {
         operant: usize,
     },
 }
+impl ExpressionType {
+    /// Returns `true`, if `Self` is any type of unary expression.
+    pub fn is_unary(&self) -> bool {
+        matches!(self, Self::UnaryOp { .. }) || matches!(self, Self::UnaryWhole { .. })
+    }
+
+    /// Returns `true`, if `Self` is any type of infix expression.
+    pub fn is_infix(&self) -> bool {
+        matches!(self, Self::Op { .. })
+            || matches!(self, Self::Left { .. })
+            || matches!(self, Self::Right { .. })
+            || matches!(self, Self::Whole { .. })
+    }
+}
 
 /// Represents a section of tokens owned by a expression
 #[derive(Debug, Clone, Copy)]
@@ -251,78 +265,105 @@ impl ExprBind {
 }
 
 fn get_expression_type(
-    prev: f32,
-    next: f32,
+    prev_token: Token,
+    next_token: Token,
     prev_oper: Option<usize>,
     next_oper: Option<usize>,
-) -> ExpressionType {
+) -> Result<ExpressionType, ExpressionParsingError> {
     match (prev_oper, next_oper) {
-        (None, None) => ExpressionType::Whole {
-            left: prev,
-            right: next,
-        },
-        (None, Some(r_expr)) => ExpressionType::Left {
-            left: prev,
-            right: r_expr,
-        },
-        (Some(l_expr), None) => ExpressionType::Right {
+        (None, None) => {
+            let TokenType::Number(prev) = prev_token.token_type else {
+                return Err(ExpressionParsingError::OperantNotNumber {
+                    left: true,
+                    token: prev_token,
+                });
+            };
+            let TokenType::Number(next) = next_token.token_type else {
+                return Err(ExpressionParsingError::OperantNotNumber {
+                    left: false,
+                    token: next_token,
+                });
+            };
+            Ok(ExpressionType::Whole {
+                left: prev,
+                right: next,
+            })
+        }
+        (None, Some(r_expr)) => {
+            let TokenType::Number(prev) = prev_token.token_type else {
+                return Err(ExpressionParsingError::OperantNotNumber {
+                    left: true,
+                    token: prev_token,
+                });
+            };
+            Ok(ExpressionType::Left {
+                left: prev,
+                right: r_expr,
+            })
+        }
+        (Some(l_expr), None) => {
+            let TokenType::Number(next) = next_token.token_type else {
+                return Err(ExpressionParsingError::OperantNotNumber {
+                    left: false,
+                    token: next_token,
+                });
+            };
+            Ok(ExpressionType::Right {
+                left: l_expr,
+                right: next,
+            })
+        }
+        (Some(l_expr), Some(r_expr)) => Ok(ExpressionType::Op {
             left: l_expr,
-            right: next,
-        },
-        (Some(l_expr), Some(r_expr)) => ExpressionType::Op {
-            left: l_expr,
             right: r_expr,
-        },
+        }),
     }
+}
+
+fn get_expr_at_place(place: usize, taken_tokens: &[ExprBind]) -> Option<usize> {
+    for taken in taken_tokens {
+        if taken.contains(place) {
+            return Some(taken.by);
+        }
+    }
+    None
 }
 
 fn get_neighbouring_expressions(
     place: usize,
     taken_tokens: &[ExprBind],
 ) -> (Option<usize>, Option<usize>) {
-    let (mut prev_expr, mut next_expr): (Option<usize>, Option<usize>) = (None, None);
-
-    let prev_i = place - 1;
-    for taken in taken_tokens.iter() {
-        if taken.contains(prev_i) {
-            prev_expr = Some(taken.by);
-            break;
-        }
-    }
-
-    let next_i = place + 1;
-    for taken in taken_tokens.iter() {
-        if taken.contains(next_i) {
-            next_expr = Some(taken.by);
-            break;
-        }
-    }
-
-    (prev_expr, next_expr)
+    (
+        get_expr_at_place(place - 1, taken_tokens),
+        get_expr_at_place(place + 1, taken_tokens),
+    )
 }
 
-fn operation_in_cal_to_expr(
-    taken_tokens: &[ExprBind],
+fn expr_infix(
+    proc_oper: ProcessedOperator,
     tokens: &[Token],
-    proc_oper: &ProcessedOperator,
+    taken_tokens: &[ExprBind],
 ) -> Result<Expression, ExpressionParsingError> {
     let place = &proc_oper.index;
+    // TODO: make indexing non-panicking
     let (prev_token, next_token) = (tokens[place - 1], tokens[place + 1]);
 
-    let TokenType::Number(prev) = prev_token.token_type else {
-        return Err(ExpressionParsingError::OperantNotNumber {
-            left: true,
-            token: prev_token,
-        });
-    };
-    let TokenType::Number(next) = next_token.token_type else {
-        return Err(ExpressionParsingError::OperantNotNumber {
-            left: false,
-            token: next_token,
-        });
-    };
+    // TODO: fix so it works with unary
 
     if taken_tokens.is_empty() {
+        let TokenType::Number(prev) = prev_token.token_type else {
+            return Err(ExpressionParsingError::OperantNotNumber {
+                left: true,
+                token: prev_token,
+            });
+        };
+        let TokenType::Number(next) = next_token.token_type else {
+            return Err(ExpressionParsingError::OperantNotNumber {
+                left: false,
+                token: next_token,
+            });
+        };
+
         Ok(Expression::new(
             proc_oper.operator,
             ExpressionType::Whole {
@@ -333,10 +374,62 @@ fn operation_in_cal_to_expr(
     } else {
         let (prev_expr, next_expr) = get_neighbouring_expressions(*place, taken_tokens);
 
+        let expr_type = get_expression_type(prev_token, next_token, prev_expr, next_expr)?;
+
+        Ok(Expression::new(proc_oper.operator, expr_type))
+    }
+}
+
+fn expr_unary(
+    proc_oper: ProcessedOperator,
+    tokens: &[Token],
+    taken_tokens: &[ExprBind],
+) -> Result<Expression, ExpressionParsingError> {
+    let place = &proc_oper.index;
+    let next_tok = tokens[place + 1];
+
+    if taken_tokens.is_empty() {
+        // TODO: make indexing non-panicking
+        let TokenType::Number(operant) = next_tok.token_type else {
+            return Err(ExpressionParsingError::OperantNotNumber {
+                left: false,
+                token: next_tok,
+            });
+        };
         Ok(Expression::new(
             proc_oper.operator,
-            get_expression_type(prev, next, prev_expr, next_expr),
+            ExpressionType::UnaryWhole { operant },
         ))
+    } else {
+        match get_expr_at_place(place + 1, taken_tokens) {
+            Some(expr) => Ok(Expression::new(
+                proc_oper.operator,
+                ExpressionType::UnaryOp { operant: expr },
+            )),
+            None => {
+                let TokenType::Number(num) = next_tok.token_type else {
+                    return Err(ExpressionParsingError::OperantNotNumber {
+                        left: false,
+                        token: next_tok,
+                    });
+                };
+                Ok(Expression::new(
+                    proc_oper.operator,
+                    ExpressionType::UnaryWhole { operant: num },
+                ))
+            }
+        }
+    }
+}
+
+fn operation_in_cal_to_expr(
+    taken_tokens: &[ExprBind],
+    tokens: &[Token],
+    proc_oper: ProcessedOperator,
+) -> Result<Expression, ExpressionParsingError> {
+    match proc_oper.operator {
+        Operator::Infix(_) => expr_infix(proc_oper, tokens, taken_tokens),
+        Operator::Unary(_) => expr_unary(proc_oper, tokens, taken_tokens),
     }
 }
 
@@ -392,9 +485,13 @@ pub fn tree_tokens(tokens: &[Token]) -> Result<Vec<Expression>, ExpressionParsin
     let mut taken_tokens = Vec::<ExprBind>::new();
 
     for (i, proc_op) in operators.into_iter().enumerate() {
-        let expr: Expression = operation_in_cal_to_expr(&taken_tokens, tokens, &proc_op)?;
+        let index = proc_op.index;
+        let expr: Expression = operation_in_cal_to_expr(&taken_tokens, tokens, proc_op)?;
 
-        let bind = ExprBind::new_pos(i, proc_op.index);
+        let bind = match expr.operator {
+            Operator::Infix(_) => ExprBind::new_pos(i, index),
+            Operator::Unary(_) => ExprBind::new(i, index, index + 1),
+        };
 
         expressions.push(expr);
         taken_tokens.push(bind);
@@ -467,7 +564,7 @@ pub fn is_expressions_valid(exprs: &[Expression]) -> Option<ExpressionInvalidRea
     for (i, expr) in exprs.iter().enumerate() {
         let is_last = i == exprs.len() - 1;
         match expr.expr_type {
-            ExpressionType::Whole { .. } => {}
+            ExpressionType::Whole { .. } | ExpressionType::UnaryWhole { .. } => {}
             ExpressionType::Left { right, .. } => {
                 rm_element!(right);
             }
@@ -478,7 +575,9 @@ pub fn is_expressions_valid(exprs: &[Expression]) -> Option<ExpressionInvalidRea
                 rm_element!(left);
                 rm_element!(right);
             }
-            _ => todo!(),
+            ExpressionType::UnaryOp { operant } => {
+                rm_element!(operant);
+            }
         }
 
         if !is_last {

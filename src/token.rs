@@ -156,7 +156,7 @@ fn mul_start_bracket_handle(r: &mut Vec<Token>, bracket_count: &mut i32) {
         return;
     };
 
-    if last_token.bracket_count == *bracket_count || !last_token.token_type.is_infix() {
+    if !last_token.token_type.is_operator() {
         r.push(token_operator!(*bracket_count - 1, InfixOperator::Mul));
     }
 }
@@ -213,6 +213,7 @@ pub fn parse_tokens(cal: &str) -> Result<Vec<Token>, TokenParseError> {
         // operators and numbers
         if let Some(infix) = InfixOperator::get_operator_from_sign(c)
             && !prev_infix
+            && i != 0
         {
             prev_infix = true;
             parse_b!();
@@ -298,6 +299,7 @@ impl Error for TokenParseError {}
 pub fn reconstruct_tokens(tokens: &[Token], include_spacing: bool) -> String {
     let mut b = String::with_capacity(16);
     let mut last_bracket_count = 0i32;
+    let mut suffix_to_push: Option<String> = None;
 
     for t in tokens {
         let bracket_diff = t.bracket_count - last_bracket_count;
@@ -310,7 +312,13 @@ pub fn reconstruct_tokens(tokens: &[Token], include_spacing: bool) -> String {
         }
 
         match t.token_type {
-            TokenType::Number(num) => b.push_str(&num.to_string()),
+            TokenType::Number(num) => {
+                b.push_str(&num.to_string());
+                if let Some(suffix) = suffix_to_push {
+                    b.push_str(&suffix);
+                    suffix_to_push = None;
+                }
+            }
             TokenType::Infix(op) => {
                 if !include_spacing {
                     b.push_str(op.as_sign());
@@ -320,13 +328,9 @@ pub fn reconstruct_tokens(tokens: &[Token], include_spacing: bool) -> String {
             }
             TokenType::Unary(op) => {
                 if op.unary_type() == UnaryType::Prefix {
-                    if !include_spacing {
-                        b.push_str(op.as_sign());
-                    } else {
-                        b.push_str(&format!(" {}", op.as_sign()));
-                    }
+                    b.push_str(op.as_sign());
                 } else {
-                    todo!();
+                    suffix_to_push = Some(op.as_sign().to_owned());
                 }
             }
         }

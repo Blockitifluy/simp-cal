@@ -1,46 +1,76 @@
 //! Calculates a value
 use std::{error::Error, fmt};
 
-use crate::expression::{Expression, ExpressionType};
+use crate::{
+    expression::{Expression, ExpressionType},
+    operator::*,
+};
+
+macro_rules! expr_err {
+    ($index:expr, $is_left: literal, $expr:  expr) => {
+        return Err(EvalCalculationErr::UnorderedExpressions {
+            index: $index,
+            is_left: $is_left,
+            expr: $expr,
+        })
+    };
+}
 
 fn get_operants_operator_of_expr(
     expr: &Expression,
     results: &[f32],
 ) -> Result<(f32, f32), EvalCalculationErr> {
-    macro_rules! expr_err {
-        ($index:expr, $is_left: literal, $expr:  expr) => {
-            return Err(EvalCalculationErr::UnorderedExpressions {
-                index: $index,
-                is_left: $is_left,
-                expr: $expr,
-            })
-        };
-    }
-
-    match &expr.expr_type {
-        ExpressionType::Whole { left, right } => Ok((*left, *right)),
+    match expr.expr_type {
+        ExpressionType::Whole { left, right } => Ok((left, right)),
         ExpressionType::Left { left, right } => {
-            let Some(r_val) = results.get(*right) else {
-                expr_err!(*right, false, *expr)
+            let Some(r_val) = results.get(right) else {
+                expr_err!(right, false, *expr)
             };
-            Ok((*left, *r_val))
+            Ok((left, *r_val))
         }
         ExpressionType::Right { left, right } => {
-            let Some(l_val) = results.get(*left) else {
-                expr_err!(*left, true, *expr)
+            let Some(l_val) = results.get(left) else {
+                expr_err!(left, true, *expr)
             };
-            Ok((*l_val, *right))
+            Ok((*l_val, right))
         }
         ExpressionType::Op { left, right } => {
-            let Some(l_val) = results.get(*left) else {
-                expr_err!(*left, false, *expr)
+            let Some(l_val) = results.get(left) else {
+                expr_err!(left, false, *expr)
             };
-            let Some(r_val) = results.get(*right) else {
-                expr_err!(*right, true, *expr)
+            let Some(r_val) = results.get(right) else {
+                expr_err!(right, true, *expr)
             };
             Ok((*l_val, *r_val))
         }
-        _ => todo!(),
+        _ => panic!("infix expected"),
+    }
+}
+
+fn eval_infix(
+    op: InfixOperator,
+    expr: &Expression,
+    results: &[f32],
+) -> Result<f32, EvalCalculationErr> {
+    let (l_ant, r_ant) = get_operants_operator_of_expr(expr, &results)?;
+
+    Ok(op.compute(l_ant, r_ant))
+}
+
+fn eval_unary(
+    op: UnaryOperator,
+    expr: &Expression,
+    results: &[f32],
+) -> Result<f32, EvalCalculationErr> {
+    match expr.expr_type {
+        ExpressionType::UnaryWhole { operant } => Ok(op.compute(operant)),
+        ExpressionType::UnaryOp { operant } => {
+            let Some(num) = results.get(operant) else {
+                expr_err!(operant, false, *expr)
+            };
+            Ok(op.compute(*num))
+        }
+        _ => panic!("unary expected"),
     }
 }
 
@@ -53,10 +83,10 @@ pub fn eval_calculation(exprs: &[Expression]) -> Result<f32, EvalCalculationErr>
     let mut results: Vec<f32> = Vec::with_capacity(16);
 
     for expr in exprs.iter() {
-        let (l_ant, r_ant) = get_operants_operator_of_expr(expr, &results)?;
-
-        // TODO:
-        let compute: f32 = todo!(); // expr.operator.compute(l_ant, r_ant);
+        let compute = match expr.operator {
+            Operator::Infix(op) => eval_infix(op, expr, &results),
+            Operator::Unary(op) => eval_unary(op, expr, &results),
+        }?;
 
         results.push(compute);
     }

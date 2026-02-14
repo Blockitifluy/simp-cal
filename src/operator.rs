@@ -239,6 +239,16 @@ impl Operator {
             Self::Unary(op) => op as &dyn OperatorTrait,
         }
     }
+
+    /// Returns `true`, if `Self` is `Infix`.
+    pub fn is_infix(&self) -> bool {
+        matches!(self, Self::Infix(..))
+    }
+
+    /// Returns `true`, if `Self` is `Unary`.
+    pub fn is_unary(&self) -> bool {
+        matches!(self, Self::Unary(..))
+    }
 }
 
 impl fmt::Display for Operator {
