@@ -1,6 +1,7 @@
 //! Utility module, for searching for operators inside a collection of tokens.
 use crate::token::{BracketLevel, Token, TokenType};
 use std::fmt;
+
 // TODO: multiple size operators
 
 /// The type used to store an operator's binding power
@@ -35,27 +36,27 @@ where
     fn get_binding_power(&self) -> BindPower;
 }
 
-#[allow(dead_code, reason = "used in unimplemented factoral operator")]
-fn factoral(num: f32) -> f32 {
-    if num < 1.0 {
-        return 0.0;
-    } else if (num - 1.0).abs() < f32::EPSILON {
-        return 1.0;
-    }
-
-    #[allow(clippy::cast_precision_loss)]
-    #[allow(clippy::cast_possible_truncation)]
-    let round_num = num as i32;
-
-    let mut f = 1;
-    for i in 1..=round_num {
-        f *= i;
-    }
-
-    #[allow(clippy::cast_precision_loss)]
-    let r = f as f32;
-    r
-}
+// #[allow(dead_code, reason = "used in unimplemented factoral operator")]
+// fn factoral(num: f32) -> f32 {
+//     if num < 1.0 {
+//         return 0.0;
+//     } else if (num - 1.0).abs() < f32::EPSILON {
+//         return 1.0;
+//     }
+//
+//     #[allow(clippy::cast_precision_loss)]
+//     #[allow(clippy::cast_possible_truncation)]
+//     let round_num = num as i32;
+//
+//     let mut f = 1;
+//     for i in 1..=round_num {
+//         f *= i;
+//     }
+//
+//     #[allow(clippy::cast_precision_loss)]
+//     let r = f as f32;
+//     r
+// }
 
 /// Describes an operant position relative to an `Operator`
 #[derive(Debug)]
@@ -93,7 +94,7 @@ pub enum UnaryType {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum UnaryOperator {
     /// Negate '-' (prefix)
-    Negate,
+    Neg,
     /// Bitwise Not '~' (prefix)
     BitNot,
     /// Factorial '!' (suffix)
@@ -110,7 +111,7 @@ impl UnaryOperator {
     #[must_use]
     pub fn compute(&self, operant: f32) -> f32 {
         match self {
-            Self::Negate => -operant,
+            Self::Neg => -operant,
             // God damn
             #[allow(clippy::cast_possible_truncation)]
             #[allow(clippy::cast_sign_loss)]
@@ -126,7 +127,7 @@ impl UnaryOperator {
     #[must_use]
     pub fn unary_type(&self) -> UnaryType {
         match self {
-            Self::Negate | Self::BitNot => UnaryType::Prefix,
+            Self::Neg | Self::BitNot => UnaryType::Prefix,
             Self::Factorial => unimplemented!(), //UnaryType::Suffix,
         }
     }
@@ -139,7 +140,7 @@ impl UnaryOperator {
     #[must_use]
     pub fn get_operators_of_unary_type(unary_type: &UnaryType) -> Vec<Self> {
         match unary_type {
-            UnaryType::Prefix => vec![Self::Negate, Self::BitNot],
+            UnaryType::Prefix => vec![Self::Neg, Self::BitNot],
             UnaryType::Suffix => unimplemented!(), // vec![Self::Factorial],
         }
     }
@@ -148,7 +149,7 @@ impl UnaryOperator {
 impl OperatorTrait for UnaryOperator {
     fn get_operator_from_sign(sign: char) -> Option<Self> {
         match sign {
-            '-' => Some(Self::Negate),
+            '-' => Some(Self::Neg),
             '~' => Some(Self::BitNot),
             '!' => unimplemented!(), // Some(Self::Factorial),
             _ => None,
@@ -157,7 +158,7 @@ impl OperatorTrait for UnaryOperator {
 
     fn as_sign(&self) -> &str {
         match self {
-            Self::Negate => "-",
+            Self::Neg => "-",
             Self::BitNot => "~",
             Self::Factorial => unimplemented!(), // "!",
         }
@@ -165,7 +166,7 @@ impl OperatorTrait for UnaryOperator {
 
     fn get_binding_power(&self) -> BindPower {
         match self {
-            Self::Negate | Self::BitNot => 10,
+            Self::Neg | Self::BitNot => 10,
             Self::Factorial => unimplemented!(), // 9,
         }
     }

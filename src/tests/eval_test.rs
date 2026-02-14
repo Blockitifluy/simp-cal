@@ -1,6 +1,9 @@
+#![allow(clippy::perf)]
+#![allow(clippy::pedantic)]
+#![allow(clippy::should_panic_without_expect)]
 use crate::{
     eval::{self, eval_calculation},
-    expr_left, expr_op, expr_right, expr_whole,
+    expr_left, expr_op, expr_right, expr_unary_op, expr_whole,
     expression::*,
     operator::*,
     tests::examples::{CALCULATION_EXAMPLE, EXAMPLE_RESULT},
@@ -60,6 +63,13 @@ fn unordered_expr_op_left() {
         expr_whole!(InfixOperator::Add, 2.0, 2.0),
         expr_op!(InfixOperator::Add, 5, 1),
     ];
+    eval_calculation(&expr).unwrap();
+}
+
+#[test]
+#[should_panic]
+fn unordered_expr_unary_op() {
+    let expr = [expr_unary_op!(UnaryOperator::Neg, 2)];
     eval_calculation(&expr).unwrap();
 }
 

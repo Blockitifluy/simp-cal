@@ -11,7 +11,7 @@ use crate::operator::{InfixOperator, OperatorTrait, UnaryOperator, UnaryType};
 /// - `$bracket_count` - the amount of brackets wrapped around the token
 /// - `$oper` - the infix operator assigned to the token.
 #[macro_export]
-macro_rules! token_operator {
+macro_rules! token_infix {
     ($bracket_count:expr, $oper:expr) => {
         Token::new($bracket_count, TokenType::Infix($oper))
     };
@@ -170,7 +170,7 @@ fn mul_start_bracket_handle(r: &mut Vec<Token>, bracket_count: BracketLevel) {
     };
 
     if !last_token.token_type.is_operator() {
-        r.push(token_operator!(bracket_count - 1, InfixOperator::Mul));
+        r.push(token_infix!(bracket_count - 1, InfixOperator::Mul));
     }
 }
 
@@ -236,7 +236,7 @@ pub fn parse_tokens(cal: &str) -> Result<Vec<Token>, TokenParseError> {
         {
             prev_infix = true;
             parse_b!();
-            r.push(token_operator!(bracket_count, infix));
+            r.push(token_infix!(bracket_count, infix));
             continue;
         } else if let Some(unary) = UnaryOperator::get_operator_from_sign(c) {
             prev_infix = false;
@@ -319,7 +319,7 @@ impl Error for TokenParseError {}
 pub fn reconstruct_tokens(tokens: &[Token], include_spacing: bool) -> String {
     let mut b = String::with_capacity(16);
     let mut last_bracket_count = 0;
-    let mut suffix_to_push: Option<String> = None;
+    // let mut suffix_to_push: Option<String> = None;
 
     for t in tokens {
         let is_start_bracket = t.bracket_count > last_bracket_count;
@@ -340,10 +340,10 @@ pub fn reconstruct_tokens(tokens: &[Token], include_spacing: bool) -> String {
         match t.token_type {
             TokenType::Number(num) => {
                 b.push_str(&num.to_string());
-                if let Some(suffix) = suffix_to_push {
-                    b.push_str(&suffix);
-                    suffix_to_push = None;
-                }
+                // if let Some(_suffix) = suffix_to_push {
+                //     b.push_str(&suffix);
+                //     suffix_to_push = None;
+                // }
             }
             TokenType::Infix(op) => {
                 if include_spacing {
@@ -356,7 +356,8 @@ pub fn reconstruct_tokens(tokens: &[Token], include_spacing: bool) -> String {
                 if op.unary_type() == UnaryType::Prefix {
                     b.push_str(op.as_sign());
                 } else {
-                    suffix_to_push = Some(op.as_sign().to_owned());
+                    // suffix_to_push = Some(op.as_sign().to_owned());
+                    unimplemented!();
                 }
             }
         }

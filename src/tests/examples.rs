@@ -1,55 +1,63 @@
 use crate::{
-    expr_left, expr_op, expr_right, expr_whole,
+    expr_left, expr_op, expr_right, expr_unary_op, expr_unary_whole, expr_whole,
     expression::{Expression, ExpressionType},
     operator::*,
     token::{Token, TokenType},
-    token_number, token_operator,
+    token_infix, token_number, token_unary,
 };
 
-pub const CALCULATION_EXAMPLE: &str = "2*(23^(3-2)/(0.5*1))+100";
-pub const CALCULATION_SPACING_EXAMPLE: &str = "2 * (23 ^ (3 - 2) / (0.5 * 1)) + 100";
+pub const CALCULATION_EXAMPLE: &str = "2*(71.5-2)+-((1^2)*-3)/2";
+pub const CALCULATION_SPACING_EXAMPLE: &str = "2 * (71.5 - 2) + -((1 ^ 2) * -3) / 2";
 
-pub const EXAMPLE_RESULT: f32 = 192.0;
+pub const EXAMPLE_RESULT: f32 = 140.5;
 
-pub const EXAMPLE_TOKENS: [Token; 13] = [
+pub const EXAMPLE_TOKENS: [Token; 15] = [
     token_number!(2.0),
-    token_operator!(InfixOperator::Mul),
-    token_number!(1, 23.0),
-    token_operator!(1, InfixOperator::Pow),
-    token_number!(2, 3.0),
-    token_operator!(2, InfixOperator::Sub),
-    token_number!(2, 2.0),
-    token_operator!(1, InfixOperator::Div),
-    token_number!(2, 0.5),
-    token_operator!(2, InfixOperator::Mul),
+    token_infix!(InfixOperator::Mul),
+    token_number!(1, 71.5),
+    token_infix!(1, InfixOperator::Sub),
+    token_number!(1, 2.0),
+    token_infix!(InfixOperator::Add),
+    token_unary!(UnaryOperator::Neg),
     token_number!(2, 1.0),
-    token_operator!(InfixOperator::Add),
-    token_number!(100.0),
+    token_infix!(2, InfixOperator::Pow),
+    token_number!(2, 2.0),
+    token_infix!(1, InfixOperator::Mul),
+    token_unary!(1, UnaryOperator::Neg),
+    token_number!(1, 3.0),
+    token_infix!(InfixOperator::Div),
+    token_number!(2.0),
 ];
 
-pub const EXAMPLE_OPERATOR_INDEX: [ProcessedOperator; 6] = [
+pub const EXAMPLE_OPERATOR_INDEX: [ProcessedOperator; 8] = [
     ProcessedOperator::new_infix(0, InfixOperator::Mul, 1),
-    ProcessedOperator::new_infix(1, InfixOperator::Pow, 3),
-    ProcessedOperator::new_infix(2, InfixOperator::Sub, 5),
-    ProcessedOperator::new_infix(1, InfixOperator::Div, 7),
-    ProcessedOperator::new_infix(2, InfixOperator::Mul, 9),
-    ProcessedOperator::new_infix(0, InfixOperator::Add, 11),
+    ProcessedOperator::new_infix(1, InfixOperator::Sub, 3),
+    ProcessedOperator::new_infix(0, InfixOperator::Add, 5),
+    ProcessedOperator::new_unary(0, UnaryOperator::Neg, 6),
+    ProcessedOperator::new_infix(2, InfixOperator::Pow, 8),
+    ProcessedOperator::new_infix(1, InfixOperator::Mul, 10),
+    ProcessedOperator::new_unary(1, UnaryOperator::Neg, 11),
+    ProcessedOperator::new_infix(0, InfixOperator::Div, 13),
 ];
 
-pub const EXAMPLE_OPERATORS_INDEX_SORT: [ProcessedOperator; 6] = [
-    ProcessedOperator::new_infix(2, InfixOperator::Mul, 9),
-    ProcessedOperator::new_infix(2, InfixOperator::Sub, 5),
-    ProcessedOperator::new_infix(1, InfixOperator::Pow, 3),
-    ProcessedOperator::new_infix(1, InfixOperator::Div, 7),
+pub const EXAMPLE_OPERATORS_INDEX_SORT: [ProcessedOperator; 8] = [
+    ProcessedOperator::new_infix(2, InfixOperator::Pow, 8),
+    ProcessedOperator::new_unary(1, UnaryOperator::Neg, 11),
+    ProcessedOperator::new_infix(1, InfixOperator::Mul, 10),
+    ProcessedOperator::new_infix(1, InfixOperator::Sub, 3),
+    ProcessedOperator::new_unary(0, UnaryOperator::Neg, 6),
     ProcessedOperator::new_infix(0, InfixOperator::Mul, 1),
-    ProcessedOperator::new_infix(0, InfixOperator::Add, 11),
+    ProcessedOperator::new_infix(0, InfixOperator::Div, 13),
+    ProcessedOperator::new_infix(0, InfixOperator::Add, 5),
 ];
 
-pub const EXAMPLE_EXPRESSIONS: [Expression; 6] = [
-    expr_whole!(InfixOperator::Mul, 0.5, 1.0),
-    expr_whole!(InfixOperator::Sub, 3.0, 2.0),
-    expr_left!(InfixOperator::Pow, 23.0, 1),
-    expr_op!(InfixOperator::Div, 2, 0),
+pub const EXAMPLE_EXPRESSIONS: [Expression; 8] = [
+    expr_whole!(InfixOperator::Pow, 1.0, 2.0),
+    expr_unary_whole!(UnaryOperator::Neg, 3.0),
+    expr_op!(InfixOperator::Mul, 0, 1),
+    expr_whole!(InfixOperator::Sub, 71.5, 2.0),
+    expr_unary_op!(UnaryOperator::Neg, 2),
     expr_left!(InfixOperator::Mul, 2.0, 3),
-    expr_right!(InfixOperator::Add, 4, 100.0),
+    expr_right!(InfixOperator::Div, 4, 2.0),
+    expr_op!(InfixOperator::Add, 5, 6),
 ];

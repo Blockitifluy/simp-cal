@@ -11,6 +11,7 @@
 #![warn(clippy::pedantic)]
 #![warn(clippy::style)]
 #![warn(clippy::perf)]
+#![allow(clippy::should_panic_without_expect)]
 pub mod eval;
 pub mod expression;
 pub mod operator;

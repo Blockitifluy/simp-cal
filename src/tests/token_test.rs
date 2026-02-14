@@ -1,4 +1,7 @@
-use crate::{token::*, token_number};
+#![allow(clippy::perf)]
+#![allow(clippy::should_panic_without_expect)]
+#![allow(clippy::pedantic)]
+use crate::{operator::InfixOperator, token::*, token_infix, token_number};
 
 use super::examples::*;
 
@@ -75,41 +78,23 @@ fn number_parse_number_panic() {
 }
 
 #[test]
-fn is_type() {
-    let tokens = parse_tokens(CALCULATION_EXAMPLE).expect("couldn't parse tokens");
-
-    for (i, tok) in tokens.into_iter().enumerate() {
-        if i % 2 == 0 {
-            assert_eq!(
-                tok.token_type.is_number(),
-                EXAMPLE_TOKENS[i].token_type.is_number()
-            );
-        } else {
-            assert_eq!(
-                tok.token_type.is_infix(),
-                EXAMPLE_TOKENS[i].token_type.is_infix()
-            );
-        }
-    }
+fn is_number() {
+    assert!(token_number!(2.0).token_type.is_number());
+    assert!(!token_infix!(InfixOperator::Sub).token_type.is_number());
 }
 
 #[test]
-fn unwrap_type() {
-    let tokens = parse_tokens(CALCULATION_EXAMPLE).expect("couldn't parse tokens");
+#[should_panic]
+fn unwrap_unary_panic() {
+    let tokens = parse_tokens("1+1").unwrap();
+    let _ = tokens[1].token_type.unwrap_unary();
+}
 
-    for (i, tok) in tokens.iter().enumerate() {
-        if i % 2 == 0 {
-            assert_eq!(
-                tok.token_type.unwrap_number(),
-                EXAMPLE_TOKENS[i].token_type.unwrap_number()
-            );
-        } else {
-            assert_eq!(
-                tok.token_type.unwrap_infix(),
-                EXAMPLE_TOKENS[i].token_type.unwrap_infix()
-            );
-        }
-    }
+#[test]
+fn unwrap_number() {
+    let tokens = parse_tokens("1+1").unwrap();
+    let num = tokens[0].token_type.unwrap_number();
+    assert_eq!(num, 1.0);
 }
 
 #[test]

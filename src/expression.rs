@@ -78,7 +78,7 @@ macro_rules! expr_unary_op {
     ($op:expr, $operant:expr) => {
         Expression::new(
             Operator::Unary($op),
-            ExpressionType::UnaryOp { left: $operant },
+            ExpressionType::UnaryOp { operant: $operant },
         )
     };
 }
@@ -138,7 +138,7 @@ impl fmt::Display for Expression {
 
                 match unary.unary_type() {
                     UnaryType::Prefix => write!(f, "{unary}{operant}"),
-                    UnaryType::Suffix => write!(f, "{operant}{unary}"),
+                    UnaryType::Suffix => unimplemented!(), // write!(f, "{operant}{unary}"),
                 }
             }
             ExpressionType::UnaryOp { operant } => {
@@ -151,7 +151,7 @@ impl fmt::Display for Expression {
 
                 match unary.unary_type() {
                     UnaryType::Prefix => write!(f, "{unary}expr({operant})"),
-                    UnaryType::Suffix => write!(f, "expr({operant}){unary}"),
+                    UnaryType::Suffix => unimplemented!(), // write!(f, "expr({operant}){unary}"),
                 }
             }
         }
