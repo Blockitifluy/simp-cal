@@ -35,12 +35,16 @@ where
     fn get_binding_power(&self) -> BindPower;
 }
 
-#[allow(dead_code)]
+#[allow(dead_code, reason = "used in unimplemented factoral operator")]
 fn factoral(num: f32) -> f32 {
     if num < 1.0 {
         return 0.0;
+    } else if (num - 1.0).abs() < f32::EPSILON {
+        return 1.0;
     }
 
+    #[allow(clippy::cast_precision_loss)]
+    #[allow(clippy::cast_possible_truncation)]
     let round_num = num as i32;
 
     let mut f = 1;
@@ -48,7 +52,9 @@ fn factoral(num: f32) -> f32 {
         f *= i;
     }
 
-    f as f32
+    #[allow(clippy::cast_precision_loss)]
+    let r = f as f32;
+    r
 }
 
 /// Describes an operant position relative to an `Operator`
@@ -72,6 +78,7 @@ impl fmt::Display for OperantPosition {
         }
     }
 }
+
 /// The type of the `UnaryOperator` as in the position of the operator
 #[repr(u8)]
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
@@ -100,9 +107,14 @@ impl UnaryOperator {
     /// - `right`: right operant
     /// # Returns
     /// The computed result
+    #[must_use]
     pub fn compute(&self, operant: f32) -> f32 {
         match self {
             Self::Negate => -operant,
+            // God damn
+            #[allow(clippy::cast_possible_truncation)]
+            #[allow(clippy::cast_sign_loss)]
+            #[allow(clippy::cast_precision_loss)]
             Self::BitNot => !(operant as u32) as f32,
             Self::Factorial => unimplemented!(), // factoral(operant),
         }
@@ -111,6 +123,7 @@ impl UnaryOperator {
     /// The type of unary operator of `Self`.
     /// # Returns
     /// `UnaryType`
+    #[must_use]
     pub fn unary_type(&self) -> UnaryType {
         match self {
             Self::Negate | Self::BitNot => UnaryType::Prefix,
@@ -123,6 +136,7 @@ impl UnaryOperator {
     /// - `unary_type`: the unary type to be searched
     /// # Returns
     /// A vec of `UnaryOperator`s.
+    #[must_use]
     pub fn get_operators_of_unary_type(unary_type: &UnaryType) -> Vec<Self> {
         match unary_type {
             UnaryType::Prefix => vec![Self::Negate, Self::BitNot],
@@ -143,9 +157,9 @@ impl OperatorTrait for UnaryOperator {
 
     fn as_sign(&self) -> &str {
         match self {
-            UnaryOperator::Negate => "-",
-            UnaryOperator::BitNot => "~",
-            UnaryOperator::Factorial => unimplemented!(), // "!",
+            Self::Negate => "-",
+            Self::BitNot => "~",
+            Self::Factorial => unimplemented!(), // "!",
         }
     }
 
@@ -184,6 +198,7 @@ impl InfixOperator {
     /// - `right`: right operant
     /// # Returns
     /// The computed result
+    #[must_use]
     pub fn compute(&self, left: f32, right: f32) -> f32 {
         match self {
             Self::Add => left + right,
@@ -196,13 +211,13 @@ impl InfixOperator {
 }
 
 impl OperatorTrait for InfixOperator {
-    fn get_operator_from_sign(sign: char) -> Option<InfixOperator> {
+    fn get_operator_from_sign(sign: char) -> Option<Self> {
         match sign {
-            '+' => Some(InfixOperator::Add),
-            '-' => Some(InfixOperator::Sub),
-            '*' => Some(InfixOperator::Mul),
-            '/' => Some(InfixOperator::Div),
-            '^' => Some(InfixOperator::Pow),
+            '+' => Some(Self::Add),
+            '-' => Some(Self::Sub),
+            '*' => Some(Self::Mul),
+            '/' => Some(Self::Div),
+            '^' => Some(Self::Pow),
             _ => None,
         }
     }
@@ -219,9 +234,9 @@ impl OperatorTrait for InfixOperator {
 
     fn get_binding_power(&self) -> BindPower {
         match self {
-            InfixOperator::Add | InfixOperator::Sub => 0,
-            InfixOperator::Mul | InfixOperator::Div => 1,
-            InfixOperator::Pow => 2,
+            Self::Add | Self::Sub => 0,
+            Self::Mul | Self::Div => 1,
+            Self::Pow => 2,
         }
     }
 }
@@ -242,12 +257,14 @@ pub enum Operator {
 }
 impl Operator {
     /// Returns `true`, if `Self` is `Infix`.
-    pub fn is_infix(&self) -> bool {
+    #[must_use]
+    pub const fn is_infix(&self) -> bool {
         matches!(self, Self::Infix(..))
     }
 
     /// Returns `true`, if `Self` is `Unary`.
-    pub fn is_unary(&self) -> bool {
+    #[must_use]
+    pub const fn is_unary(&self) -> bool {
         matches!(self, Self::Unary(..))
     }
 }
@@ -262,7 +279,7 @@ impl fmt::Display for Operator {
 }
 
 /// A operator found in a collection of `Tokens`.
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub struct ProcessedOperator {
     /// a amount of brackets wrapped around the `ProcessedOperator`.
     pub bracket_count: BracketLevel,
@@ -279,6 +296,7 @@ impl ProcessedOperator {
     /// - `index`: the index of the `ProcessedOperator` inside the original collection of tokens.
     /// # Returns
     /// A new `ProcessedOperator`
+    #[must_use]
     pub const fn new_infix(
         bracket_count: BracketLevel,
         operator: InfixOperator,
@@ -298,6 +316,7 @@ impl ProcessedOperator {
     /// - `index`: the index of the `ProcessedOperator` inside the original collection of tokens.
     /// # Returns
     /// A new `ProcessedOperator`
+    #[must_use]
     pub const fn new_unary(
         bracket_count: BracketLevel,
         operator: UnaryOperator,
@@ -317,6 +336,7 @@ impl ProcessedOperator {
     /// - `index`: the index of the `ProcessedOperator` inside the original collection of tokens.
     /// # Returns
     /// A new `ProcessedOperator`
+    #[must_use]
     pub const fn new(bracket_count: BracketLevel, operator: Operator, index: usize) -> Self {
         Self {
             bracket_count,
@@ -328,6 +348,7 @@ impl ProcessedOperator {
     /// Gets the binding power of the `ProcessedOperator`.
     /// # Returns
     /// The binding power of the operator
+    #[must_use]
     pub fn binding_power(&self) -> BindPower {
         match self.operator {
             Operator::Unary(op) => op.get_binding_power(),
@@ -357,6 +378,7 @@ impl Ord for ProcessedOperator {
 /// - `tokens`: a slice of tokens
 /// # Returns
 /// A vec of the index of the operators and operator.
+#[must_use]
 pub fn get_operator_in_tokens(tokens: &[Token]) -> Vec<ProcessedOperator> {
     tokens
         .iter()
@@ -364,7 +386,7 @@ pub fn get_operator_in_tokens(tokens: &[Token]) -> Vec<ProcessedOperator> {
         .filter_map(|(i, t)| match t.token_type {
             TokenType::Infix(op) => Some(ProcessedOperator::new_infix(t.bracket_count, op, i)),
             TokenType::Unary(op) => Some(ProcessedOperator::new_unary(t.bracket_count, op, i)),
-            _ => None,
+            TokenType::Number(_) => None,
         })
         .collect()
 }

@@ -1,6 +1,8 @@
 //! Handles parsing tokens.
-use core::fmt;
-use std::error::Error;
+use std::{
+    error::Error,
+    fmt::{self, Write as _},
+};
 
 use crate::operator::{InfixOperator, OperatorTrait, UnaryOperator, UnaryType};
 
@@ -67,6 +69,7 @@ impl Token {
     /// # Arguements
     /// - `bracket_count`: the amount of brackets wrapped around the token
     /// - `token_type`: the type of Token
+    #[must_use]
     pub const fn new(bracket_count: BracketLevel, token_type: TokenType) -> Self {
         Self {
             bracket_count,
@@ -102,6 +105,7 @@ impl TokenType {
     /// An `InfixOperator`
     /// # Panics
     /// Panics when the `Token` isn't an `InfixOperator`.
+    #[must_use]
     pub fn unwrap_infix(self) -> InfixOperator {
         let Self::Infix(op) = self else {
             panic!("couldn't unwrap token into infix operator")
@@ -114,6 +118,7 @@ impl TokenType {
     /// An `UnaryOperator`
     /// # Panics
     /// Panics when the `Token` isn't an `UnaryOperator`.
+    #[must_use]
     pub fn unwrap_unary(self) -> UnaryOperator {
         let Self::Unary(op) = self else {
             panic!("couldn't unwrap token into unary operator")
@@ -126,6 +131,7 @@ impl TokenType {
     /// A number
     /// # Panics
     /// Panics when the `Token` isn't a number.
+    #[must_use]
     pub fn unwrap_number(&self) -> f32 {
         let Self::Number(num) = self else {
             panic!("couldn't unwrap token into number")
@@ -134,39 +140,48 @@ impl TokenType {
     }
 
     /// Returns `true`, if `Token` is an `InfixOperator`.
-    pub fn is_infix(&self) -> bool {
+    #[must_use]
+    pub const fn is_infix(&self) -> bool {
         matches!(self, Self::Infix(_))
     }
 
     /// Returns `true`, if `Token` is an `UnaryOperator`
-    pub fn is_unary(&self) -> bool {
+    #[must_use]
+    pub const fn is_unary(&self) -> bool {
         matches!(self, Self::Unary(_))
     }
 
     /// Returns `true`, if `Token` is any type of `Operator`
-    pub fn is_operator(&self) -> bool {
+    #[must_use]
+    pub const fn is_operator(&self) -> bool {
         self.is_unary() || self.is_infix()
     }
 
     /// Returns `true`, if `Token` is a `Number`.
-    pub fn is_number(&self) -> bool {
+    #[must_use]
+    pub const fn is_number(&self) -> bool {
         matches!(self, Self::Number(_))
     }
 }
 
-fn mul_start_bracket_handle(r: &mut Vec<Token>, bracket_count: &mut BracketLevel) {
+fn mul_start_bracket_handle(r: &mut Vec<Token>, bracket_count: BracketLevel) {
     let Some(last_token) = r.last() else {
         return;
     };
 
     if !last_token.token_type.is_operator() {
-        r.push(token_operator!(*bracket_count - 1, InfixOperator::Mul));
+        r.push(token_operator!(bracket_count - 1, InfixOperator::Mul));
     }
 }
 
 /// Parses the tokens of a calculation.
 /// # Arguements
 /// - `cal`: calculation string
+/// # Errors
+/// - `NumberParse`: Operant wasn't a valid number.
+/// - `HangingBracket`: Calculation has a bracket that hasn't been closed or opened.
+/// - `InvalidCharacter`: An invalid character or a character used in the wrong context.
+/// - `EmptyBracket`: A bracket has no characters inside that could be parsed
 /// # Returns
 /// A result of:
 /// - `Ok`: A vec of tokens
@@ -210,7 +225,7 @@ pub fn parse_tokens(cal: &str) -> Result<Vec<Token>, TokenParseError> {
             prev_infix = true;
             bracket_count += 1;
             last_bracket = i;
-            mul_start_bracket_handle(&mut r, &mut bracket_count);
+            mul_start_bracket_handle(&mut r, bracket_count);
             continue;
         }
 
@@ -300,6 +315,7 @@ impl Error for TokenParseError {}
 /// # Note
 /// Can accept malformed tokens, and reconstruction doesn't match exactly with it's inputs e.g.
 /// _1.0_ will always become _1_.
+#[must_use]
 pub fn reconstruct_tokens(tokens: &[Token], include_spacing: bool) -> String {
     let mut b = String::with_capacity(16);
     let mut last_bracket_count = 0;
@@ -330,10 +346,10 @@ pub fn reconstruct_tokens(tokens: &[Token], include_spacing: bool) -> String {
                 }
             }
             TokenType::Infix(op) => {
-                if !include_spacing {
-                    b.push_str(op.as_sign());
+                if include_spacing {
+                    let _ = write!(b, " {} ", op.as_sign());
                 } else {
-                    b.push_str(&format!(" {} ", op.as_sign()));
+                    b.push_str(op.as_sign());
                 }
             }
             TokenType::Unary(op) => {
@@ -360,6 +376,7 @@ pub fn reconstruct_tokens(tokens: &[Token], include_spacing: bool) -> String {
 /// # Example
 /// Input: `1 +   5 ^ 2`
 /// Output: `1+5^2`
+#[must_use]
 pub fn reduce_calculation(s: &str) -> String {
     let mut r = String::with_capacity(s.len());
     for c in s.chars() {

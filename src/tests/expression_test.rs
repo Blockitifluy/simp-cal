@@ -33,7 +33,7 @@ fn expression_cal_fuse() {
         &expression_test,
         &tree_tokens(&parse_tokens("10*(2+1-(6*2))").expect("couldn't parse tokens"))
             .expect("couln't parse expression")
-    )
+    );
 }
 
 #[test]
@@ -91,7 +91,6 @@ fn expression_display() {
 
 #[test]
 fn expression_err_display() {
-    println!("{}", ExpressionParsingError::HangingBracket);
     println!(
         "{}",
         ExpressionParsingError::OperantNotNumber {
@@ -129,11 +128,11 @@ fn expression_intersects_bind() {
 
 #[test]
 fn valid_expr() {
-    assert_eq!(is_expressions_valid(&EXAMPLE_EXPRESSIONS), None)
+    assert_eq!(is_expressions_valid(&EXAMPLE_EXPRESSIONS), None);
 }
 #[test]
 fn valid_expr_empty() {
-    assert!(is_expressions_valid(&Vec::new()).is_none())
+    assert!(is_expressions_valid(&Vec::new()).is_none());
 }
 
 #[test]
@@ -145,7 +144,7 @@ fn invalid_first_expr_whole() {
 
     let reason = is_expressions_valid(&exprs).unwrap();
 
-    assert!(matches!(reason, ExpressionInvalidReason::FirstExprNotWhole))
+    assert!(matches!(reason, ExpressionInvalidReason::FirstExprNotWhole));
 }
 
 #[test]
@@ -160,7 +159,7 @@ fn invalid_reference_error() {
     assert!(matches!(
         reason,
         ExpressionInvalidReason::ReferenceError { .. }
-    ))
+    ));
 }
 
 #[test]
@@ -175,7 +174,7 @@ fn invalid_unreference_expr() {
     assert!(matches!(
         reason,
         ExpressionInvalidReason::UnreferencedExprs { .. }
-    ))
+    ));
 }
 
 #[test]

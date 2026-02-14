@@ -1,5 +1,8 @@
 //! Handles converting tokens into expressions for evalulation a calculation.
-use crate::{operator::*, token::*};
+use crate::{
+    operator::{OperantPosition, Operator, ProcessedOperator, UnaryType, get_operator_in_tokens},
+    token::{Token, TokenType},
+};
 use std::{error::Error, fmt};
 
 /// Whole expression
@@ -101,6 +104,7 @@ impl Expression {
     /// - `expr_type`: the type of expression
     /// # Returns
     /// A new `Expression`
+    #[must_use]
     pub const fn new(operator: Operator, expr_type: ExpressionType) -> Self {
         Self {
             operator,
@@ -154,8 +158,10 @@ impl fmt::Display for Expression {
     }
 }
 
-/// A part of a parsed calculation. Its partialness is based on it's neighbouring expressions and
-/// the operator's binding power. If the type is `usize`, then it is refering to the index of another expression.
+/// A part of a parsed calculation.
+///
+/// Its partialness is based on it's neighbouring expressions and the operator's binding power.
+/// If the type is `usize`, then it is refering to the index of another expression.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum ExpressionType {
     /// An expression with only it's operator owned.
@@ -199,12 +205,14 @@ pub enum ExpressionType {
 }
 impl ExpressionType {
     /// Returns `true`, if `Self` is any type of unary expression.
-    pub fn is_unary(&self) -> bool {
+    #[must_use]
+    pub const fn is_unary(&self) -> bool {
         matches!(self, Self::UnaryOp { .. }) || matches!(self, Self::UnaryWhole { .. })
     }
 
     /// Returns `true`, if `Self` is any type of infix expression.
-    pub fn is_infix(&self) -> bool {
+    #[must_use]
+    pub const fn is_infix(&self) -> bool {
         matches!(self, Self::Op { .. })
             || matches!(self, Self::Left { .. })
             || matches!(self, Self::Right { .. })
@@ -230,7 +238,8 @@ impl ExprBind {
     /// - `end`: the end of the range
     /// # Returns
     /// A new `ExprBind`
-    pub fn new(by: usize, start: usize, end: usize) -> Self {
+    #[must_use]
+    pub const fn new(by: usize, start: usize, end: usize) -> Self {
         Self { by, start, end }
     }
 
@@ -238,7 +247,8 @@ impl ExprBind {
     /// # Arguements
     /// - `by`: the operator that owns this `ExprBind`
     /// - `token_pos`: the position of the operator
-    pub fn new_pos(by: usize, token_pos: usize) -> Self {
+    #[must_use]
+    pub const fn new_pos(by: usize, token_pos: usize) -> Self {
         Self::new(by, token_pos - 1, token_pos + 1)
     }
 
@@ -247,6 +257,7 @@ impl ExprBind {
     /// - `i`: the index
     /// # Returns
     /// Is contained?
+    #[must_use]
     pub fn contains(&self, i: usize) -> bool {
         (self.start..=self.end).contains(&i)
     }
@@ -256,6 +267,7 @@ impl ExprBind {
     /// - `range`: the other `ExprBind`
     /// # Returns
     /// Is intersecting?
+    #[must_use]
     pub fn intersects_bind(&self, range: &Self) -> bool {
         self.contains(range.start)
             || self.contains(range.end)
@@ -264,7 +276,7 @@ impl ExprBind {
     }
 }
 
-fn get_expression_type(
+const fn get_expression_type(
     prev_token: Token,
     next_token: Token,
     prev_oper: Option<usize>,
@@ -412,25 +424,22 @@ fn expr_unary(
             proc_oper.operator,
             ExpressionType::UnaryWhole { operant },
         ))
+    } else if let Some(expr) = get_expr_at_place(*place + 1, taken_tokens) {
+        Ok(Expression::new(
+            proc_oper.operator,
+            ExpressionType::UnaryOp { operant: expr },
+        ))
     } else {
-        match get_expr_at_place(*place + 1, taken_tokens) {
-            Some(expr) => Ok(Expression::new(
-                proc_oper.operator,
-                ExpressionType::UnaryOp { operant: expr },
-            )),
-            None => {
-                let TokenType::Number(num) = next_tok.token_type else {
-                    return Err(ExpressionParsingError::OperantNotNumber {
-                        position: OperantPosition::Unary,
-                        token: *next_tok,
-                    });
-                };
-                Ok(Expression::new(
-                    proc_oper.operator,
-                    ExpressionType::UnaryWhole { operant: num },
-                ))
-            }
-        }
+        let TokenType::Number(num) = next_tok.token_type else {
+            return Err(ExpressionParsingError::OperantNotNumber {
+                position: OperantPosition::Unary,
+                token: *next_tok,
+            });
+        };
+        Ok(Expression::new(
+            proc_oper.operator,
+            ExpressionType::UnaryWhole { operant: num },
+        ))
     }
 }
 
@@ -486,6 +495,9 @@ fn fuse_taken_tokens(taken_tokens: &mut Vec<ExprBind>) {
 /// Converts a `Token` slice into a vec of `Expression`s.
 /// # Arguements
 /// - `tokens`: a slice of `Token`s
+/// # Errors
+/// - `NoNeighbouringOperants`: an operator doesn't have an valid operant at atleast one side of it (e.g. _1 +_ or _+ 1_)
+/// - `OperantNotNumber`: an operant of an `Whole`, `Left` or `Right` expression type is not a valid number
 /// # Returns
 /// A vec of `Expression`s.
 pub fn tree_tokens(tokens: &[Token]) -> Result<Vec<Expression>, ExpressionParsingError> {
@@ -513,7 +525,7 @@ pub fn tree_tokens(tokens: &[Token]) -> Result<Vec<Expression>, ExpressionParsin
 }
 
 /// A reason why an expression slice is valid.
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum ExpressionInvalidReason {
     /// When the first expression is not the `ExpressionType` _Whole_.
     FirstExprNotWhole,
@@ -551,6 +563,7 @@ impl fmt::Display for ExpressionInvalidReason {
 /// `None`, if the slice vaild, otherwise returns the reason why it is invalid.
 /// # Note
 /// This doesn't check for expressions that don't follow the order of operations.
+#[must_use]
 pub fn is_expressions_valid(exprs: &[Expression]) -> Option<ExpressionInvalidReason> {
     // first, the first token has to be the Whole type
 
@@ -615,8 +628,6 @@ pub enum ExpressionParsingError {
         /// The token of the operant.
         token: Token,
     },
-    /// A hanging bracket found (not used).
-    HangingBracket,
     /// The operator's has no neighbour in a direction.
     NoNeighbouringOperants {
         /// The position of the `Operant` relative to an operator
@@ -630,9 +641,6 @@ impl fmt::Display for ExpressionParsingError {
         match self {
             Self::OperantNotNumber { position, token } => {
                 write!(f, "{position} token {token:?} is not a number",)
-            }
-            Self::HangingBracket => {
-                write!(f, "hanging bracket")
             }
             Self::NoNeighbouringOperants { position, place } => {
                 write!(

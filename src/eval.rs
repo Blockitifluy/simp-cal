@@ -3,7 +3,7 @@ use std::{error::Error, fmt};
 
 use crate::{
     expression::{Expression, ExpressionType},
-    operator::*,
+    operator::{InfixOperator, OperantPosition, Operator, UnaryOperator},
 };
 
 macro_rules! expr_err {
@@ -52,7 +52,7 @@ fn eval_infix(
     expr: &Expression,
     results: &[f32],
 ) -> Result<f32, EvalCalculationErr> {
-    let (l_ant, r_ant) = get_operants_operator_of_expr(expr, &results)?;
+    let (l_ant, r_ant) = get_operants_operator_of_expr(expr, results)?;
 
     Ok(op.compute(l_ant, r_ant))
 }
@@ -70,19 +70,22 @@ fn eval_unary(
             };
             Ok(op.compute(*num))
         }
-        _ => unreachable!("unary expected"),
+        _ => unreachable!("unary unreachable"),
     }
 }
 
 /// Evalulates a slice of `Expression`s to a `f32` number.
 /// # Arguements
 /// - `exprs`: A slice of `Expression`s
+/// # Errors
+/// - `UnorderedExpressions`: Caused when the function tries to evalulate an `Expression`, linking to
+///   another that hasn't been evalulate yet. Check if you are sorting the `Expression`s in accorance with BODMAS.
 /// # Returns
 /// The calculated number
 pub fn eval_calculation(exprs: &[Expression]) -> Result<f32, EvalCalculationErr> {
     let mut results: Vec<f32> = Vec::with_capacity(16);
 
-    for expr in exprs.iter() {
+    for expr in exprs {
         let compute = match expr.operator {
             Operator::Infix(op) => eval_infix(op, expr, &results),
             Operator::Unary(op) => eval_unary(op, expr, &results),

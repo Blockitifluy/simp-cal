@@ -2,6 +2,11 @@
 name = "simp-cal"
 version = "0.1.4"
 edition = "2024"
+description = "Converts text calculations into expressions then can calculate them"
+license-file = "LICENSE"
+repository = "https://github.com/Blockitifluy/simp-cal"
+keywords = ["calculator"]
+categories = ["calculator"]
 
 [dependencies]
 

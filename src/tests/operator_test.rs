@@ -53,5 +53,5 @@ fn sort_operators() {
     let mut operators = get_operator_in_tokens(&EXAMPLE_TOKENS);
     operators.sort();
 
-    assert_eq!(operators, EXAMPLE_OPERATORS_INDEX_SORT)
+    assert_eq!(operators, EXAMPLE_OPERATORS_INDEX_SORT);
 }

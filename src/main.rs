@@ -1,6 +1,16 @@
 //! Parses calculations into expressions that could be evalulated
 
 #![warn(missing_docs)]
+#![warn(clippy::explicit_into_iter_loop)]
+#![warn(clippy::explicit_iter_loop)]
+#![warn(clippy::suspicious)]
+#![warn(clippy::cargo)]
+#![warn(clippy::complexity)]
+#![warn(clippy::correctness)]
+#![warn(clippy::nursery)]
+#![warn(clippy::pedantic)]
+#![warn(clippy::style)]
+#![warn(clippy::perf)]
 pub mod eval;
 pub mod expression;
 pub mod operator;
@@ -36,6 +46,7 @@ macro_rules! input {
 type ProgramResult<T> = Result<T, Box<dyn Error>>;
 
 #[derive(Clone, Copy, Debug)]
+#[allow(clippy::struct_excessive_bools)]
 struct ProgramFlags {
     pub verbose: bool,
     pub eval: bool,
@@ -53,7 +64,7 @@ impl Default for ProgramFlags {
     }
 }
 
-fn parse_calculation(buffer: &str, flags: &ProgramFlags) -> ProgramResult<Vec<Expression>> {
+fn parse_calculation(buffer: &str, flags: ProgramFlags) -> ProgramResult<Vec<Expression>> {
     let cal = reduce_calculation(buffer);
 
     // Parsing
@@ -67,20 +78,20 @@ fn parse_calculation(buffer: &str, flags: &ProgramFlags) -> ProgramResult<Vec<Ex
     let exprs = tree_tokens(&tokens)?;
     if flags.verbose || !flags.eval {
         verbose!(flags.verbose, "expressions:");
-        for expr in exprs.iter() {
-            println!("{}", expr);
+        for expr in &exprs {
+            println!("{expr}");
         }
     }
     Ok(exprs)
 }
 
-fn calculate_buffer(buffer: &str, flags: &ProgramFlags) -> ProgramResult<()> {
+fn calculate_buffer(buffer: &str, flags: ProgramFlags) -> ProgramResult<()> {
     let exprs = parse_calculation(buffer, flags)?;
     if flags.eval {
         verbose!(flags.verbose, "\n# Eval");
 
         let eval_result = eval_calculation(&exprs)?;
-        println!("{}", eval_result);
+        println!("{eval_result}");
     }
     Ok(())
 }
@@ -125,10 +136,10 @@ fn main() -> ProgramResult<()> {
     if positional_args.is_empty() {
         let buffer = input!();
 
-        calculate_buffer(&buffer, &flags)?;
+        calculate_buffer(&buffer, flags)?;
     } else {
         for cal in positional_args {
-            calculate_buffer(&cal, &flags)?;
+            calculate_buffer(&cal, flags)?;
         }
     }
 

@@ -8,7 +8,7 @@ fn reduce_cal() {
 
     let reduced = reduce_calculation(input);
 
-    assert_eq!(reduced, "1*23^2-2")
+    assert_eq!(reduced, "1*23^2-2");
 }
 
 #[test]
@@ -16,7 +16,7 @@ fn tokenize_cal() {
     assert_eq!(
         parse_tokens(CALCULATION_EXAMPLE).expect("couldn't parse tokens"),
         EXAMPLE_TOKENS
-    )
+    );
 }
 
 #[test]
@@ -63,7 +63,7 @@ fn hanging_end_bracket_panic() {
 fn empty_bracket_panic() {
     let input: &str = "1+()";
 
-    println!("{:?}", parse_tokens(input).unwrap())
+    println!("{:?}", parse_tokens(input).unwrap());
 }
 
 #[test]
@@ -83,12 +83,12 @@ fn is_type() {
             assert_eq!(
                 tok.token_type.is_number(),
                 EXAMPLE_TOKENS[i].token_type.is_number()
-            )
+            );
         } else {
             assert_eq!(
                 tok.token_type.is_infix(),
                 EXAMPLE_TOKENS[i].token_type.is_infix()
-            )
+            );
         }
     }
 }
@@ -102,12 +102,12 @@ fn unwrap_type() {
             assert_eq!(
                 tok.token_type.unwrap_number(),
                 EXAMPLE_TOKENS[i].token_type.unwrap_number()
-            )
+            );
         } else {
             assert_eq!(
                 tok.token_type.unwrap_infix(),
                 EXAMPLE_TOKENS[i].token_type.unwrap_infix()
-            )
+            );
         }
     }
 }
@@ -116,14 +116,14 @@ fn unwrap_type() {
 #[should_panic]
 fn unwrap_number_panic() {
     let tokens = parse_tokens("1+1").unwrap();
-    tokens[1].token_type.unwrap_number();
+    let _ = tokens[1].token_type.unwrap_number();
 }
 
 #[test]
 #[should_panic]
 fn unwrap_operator_panic() {
     let tokens = parse_tokens("1+1").unwrap();
-    tokens[0].token_type.unwrap_infix();
+    let _ = tokens[0].token_type.unwrap_infix();
 }
 
 #[test]
@@ -136,7 +136,7 @@ fn token_err_display() {
     );
     println!("{}", TokenParseError::HangingBracket);
     println!("{}", TokenParseError::InvalidCharacter { character: '\\' });
-    println!("{}", TokenParseError::EmptyBracket { at: 12usize })
+    println!("{}", TokenParseError::EmptyBracket { at: 12usize });
 }
 
 #[test]
