@@ -1,8 +1,11 @@
 //! Utility module, for searching for operators inside a collection of tokens.
-use crate::token::{Token, TokenType};
+use crate::token::{BracketLevel, Token, TokenType};
 use std::fmt;
 // TODO: multiple size operators
 // WARN: THE SUFFIX UNARY OPERATOR DOESN'T WORK AS EXPECTED
+
+/// The type used to store an operator's binding power
+pub type BindPower = u8;
 
 /// A common trait that every operator type implements.
 pub trait OperatorTrait
@@ -30,7 +33,7 @@ where
     /// The binding power is the priority, of which "grabs" a neighbouring operant. For example:
     /// `10+5*2`
     /// The '*' grabs the 5, because it has a higher binding power than '+'.
-    fn get_binding_power(&self) -> i32;
+    fn get_binding_power(&self) -> BindPower;
 }
 
 fn factoral(num: f32) -> f32 {
@@ -125,7 +128,7 @@ impl OperatorTrait for UnaryOperator {
         }
     }
 
-    fn get_binding_power(&self) -> i32 {
+    fn get_binding_power(&self) -> BindPower {
         match self {
             Self::Negate | Self::BitNot => 10,
             Self::Factorial => 9,
@@ -193,7 +196,7 @@ impl OperatorTrait for InfixOperator {
         }
     }
 
-    fn get_binding_power(&self) -> i32 {
+    fn get_binding_power(&self) -> BindPower {
         match self {
             InfixOperator::Add | InfixOperator::Sub => 0,
             InfixOperator::Mul | InfixOperator::Div => 1,
@@ -241,7 +244,7 @@ impl fmt::Display for Operator {
 #[derive(Debug, PartialEq, Eq)]
 pub struct ProcessedOperator {
     /// a amount of brackets wrapped around the `ProcessedOperator`.
-    pub bracket_count: i32,
+    pub bracket_count: BracketLevel,
     /// The operator
     pub operator: Operator,
     /// The index of the `ProcessedOperator` inside the original collection of tokens.
@@ -255,7 +258,11 @@ impl ProcessedOperator {
     /// - `index`: the index of the `ProcessedOperator` inside the original collection of tokens.
     /// # Returns
     /// A new `ProcessedOperator`
-    pub const fn new_infix(bracket_count: i32, operator: InfixOperator, index: usize) -> Self {
+    pub const fn new_infix(
+        bracket_count: BracketLevel,
+        operator: InfixOperator,
+        index: usize,
+    ) -> Self {
         Self {
             bracket_count,
             operator: Operator::Infix(operator),
@@ -270,7 +277,11 @@ impl ProcessedOperator {
     /// - `index`: the index of the `ProcessedOperator` inside the original collection of tokens.
     /// # Returns
     /// A new `ProcessedOperator`
-    pub const fn new_unary(bracket_count: i32, operator: UnaryOperator, index: usize) -> Self {
+    pub const fn new_unary(
+        bracket_count: BracketLevel,
+        operator: UnaryOperator,
+        index: usize,
+    ) -> Self {
         Self {
             bracket_count,
             operator: Operator::Unary(operator),
@@ -285,7 +296,7 @@ impl ProcessedOperator {
     /// - `index`: the index of the `ProcessedOperator` inside the original collection of tokens.
     /// # Returns
     /// A new `ProcessedOperator`
-    pub const fn new(bracket_count: i32, operator: Operator, index: usize) -> Self {
+    pub const fn new(bracket_count: BracketLevel, operator: Operator, index: usize) -> Self {
         Self {
             bracket_count,
             operator,
@@ -296,7 +307,7 @@ impl ProcessedOperator {
     /// Gets the binding power of the `ProcessedOperator`.
     /// # Returns
     /// The binding power of the operator
-    pub fn binding_power(&self) -> i32 {
+    pub fn binding_power(&self) -> BindPower {
         match self.operator {
             Operator::Unary(op) => op.get_binding_power(),
             Operator::Infix(op) => op.get_binding_power(),
