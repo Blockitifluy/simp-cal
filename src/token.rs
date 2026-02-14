@@ -204,6 +204,7 @@ pub fn parse_tokens(cal: &str) -> Result<Vec<Token>, TokenParseError> {
 
         if c == '(' {
             parse_b!();
+            prev_infix = true;
             bracket_count += 1;
             last_bracket = i;
             mul_start_bracket_handle(&mut r, &mut bracket_count);

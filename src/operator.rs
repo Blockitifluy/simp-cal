@@ -1,9 +1,8 @@
 //! Utility module, for searching for operators inside a collection of tokens.
 use crate::token::{Token, TokenType};
 use std::fmt;
-
-// TODO: implement the new Operator enum
-// TODO: multiple size variable
+// TODO: multiple size operators
+// WARN: THE SUFFIX UNARY OPERATOR DOESN'T WORK AS EXPECTED
 
 /// A common trait that every operator type implements.
 pub trait OperatorTrait
@@ -80,7 +79,7 @@ impl UnaryOperator {
     pub fn compute(&self, operant: f32) -> f32 {
         match self {
             Self::Negate => -operant,
-            Self::BitNot => !(operant as i32) as f32,
+            Self::BitNot => !(operant as u32) as f32,
             Self::Factorial => factoral(operant),
         }
     }
@@ -131,12 +130,6 @@ impl OperatorTrait for UnaryOperator {
             Self::Negate | Self::BitNot => 10,
             Self::Factorial => 9,
         }
-    }
-}
-
-impl Into<Operator> for UnaryOperator {
-    fn into(self) -> Operator {
-        Operator::Unary(self)
     }
 }
 
@@ -209,12 +202,6 @@ impl OperatorTrait for InfixOperator {
     }
 }
 
-impl Into<Operator> for InfixOperator {
-    fn into(self) -> Operator {
-        Operator::Infix(self)
-    }
-}
-
 impl fmt::Display for InfixOperator {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.as_sign())
@@ -230,16 +217,6 @@ pub enum Operator {
     Unary(UnaryOperator),
 }
 impl Operator {
-    /// Converts `Self` into a borrow of the trait object `OperatorTrait`.
-    /// # Returns
-    /// A borrow the trait object `OperatorTrait`.
-    pub fn to_dyn(&self) -> &dyn OperatorTrait {
-        match self {
-            Self::Infix(op) => op as &dyn OperatorTrait,
-            Self::Unary(op) => op as &dyn OperatorTrait,
-        }
-    }
-
     /// Returns `true`, if `Self` is `Infix`.
     pub fn is_infix(&self) -> bool {
         matches!(self, Self::Infix(..))
@@ -320,8 +297,10 @@ impl ProcessedOperator {
     /// # Returns
     /// The binding power of the operator
     pub fn binding_power(&self) -> i32 {
-        let oper_dyn: &dyn OperatorTrait = self.operator.to_dyn();
-        oper_dyn.get_binding_power()
+        match self.operator {
+            Operator::Unary(op) => op.get_binding_power(),
+            Operator::Infix(op) => op.get_binding_power(),
+        }
     }
 }
 

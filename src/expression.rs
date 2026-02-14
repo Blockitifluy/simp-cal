@@ -2,6 +2,8 @@
 use crate::{operator::*, token::*};
 use std::{error::Error, fmt};
 
+// WARN: Double unary (suffix and prefix or prefix and prefix) is not working
+
 /// Whole expression
 #[macro_export]
 macro_rules! expr_whole {
@@ -348,8 +350,6 @@ fn expr_infix(
     // TODO: make indexing non-panicking
     let (prev_token, next_token) = (tokens[place - 1], tokens[place + 1]);
 
-    // TODO: fix so it works with unary
-
     if taken_tokens.is_empty() {
         let TokenType::Number(prev) = prev_token.token_type else {
             return Err(ExpressionParsingError::OperantNotNumber {
@@ -479,7 +479,6 @@ fn fuse_taken_tokens(taken_tokens: &mut Vec<ExprBind>) {
 pub fn tree_tokens(tokens: &[Token]) -> Result<Vec<Expression>, ExpressionParsingError> {
     let mut operators = get_operator_in_tokens(tokens);
     operators.sort();
-    println!("{operators:?}");
 
     let mut expressions = Vec::<Expression>::new();
     let mut taken_tokens = Vec::<ExprBind>::new();
