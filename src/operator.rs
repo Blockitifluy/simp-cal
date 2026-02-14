@@ -1,6 +1,9 @@
 //! Utility module, for searching for operators inside a collection of tokens.
-use crate::token::{Token, TokenType};
+use crate::token::{BracketLevel, Token, TokenType};
 use std::fmt;
+
+/// The type used to store an operator's binding power
+pub type BindPower = u8;
 
 /// An operator used in calculations.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -69,7 +72,7 @@ impl Operator {
     /// The binding power is the priority, of which "grabs" a neighbouring operant. For example:
     /// `10+5*2`
     /// The '*' grabs the 5, because it has a higher binding power than '+'.
-    pub fn get_binding_power(&self) -> i32 {
+    pub fn get_binding_power(&self) -> BindPower {
         match self {
             Operator::Add | Operator::Sub => 0,
             Operator::Mul | Operator::Div => 1,
@@ -88,7 +91,7 @@ impl fmt::Display for Operator {
 #[derive(Debug, PartialEq, Eq)]
 pub struct ProcessedOperator {
     /// a amount of brackets wrapped around the `ProcessedOperator`.
-    pub bracket_count: i32,
+    pub bracket_count: BracketLevel,
     /// The operator
     pub operator: Operator,
     /// The index of the `ProcessedOperator` inside the original collection of tokens.
@@ -102,7 +105,7 @@ impl ProcessedOperator {
     /// - `index`: the index of the `ProcessedOperator` inside the original collection of tokens.
     /// # Returns
     /// A new `ProcessedOperator`
-    pub const fn new(bracket_count: i32, operator: Operator, index: usize) -> Self {
+    pub const fn new(bracket_count: BracketLevel, operator: Operator, index: usize) -> Self {
         Self {
             bracket_count,
             operator,
@@ -113,7 +116,7 @@ impl ProcessedOperator {
     /// Gets the binding power of the `ProcessedOperator`.
     /// # Returns
     /// The binding power of the operator
-    pub fn binding_power(&self) -> i32 {
+    pub fn binding_power(&self) -> BindPower {
         self.operator.get_binding_power()
     }
 }

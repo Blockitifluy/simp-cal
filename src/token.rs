@@ -32,13 +32,16 @@ macro_rules! token_number {
     };
 }
 
+/// The type used to handle the amount of brackets wrapped around a token.
+pub type BracketLevel = u8;
+
 /// Represents a piece of data inside of a calculation.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Token {
     /// The amount of brackets wrapped around the token.
     /// A start bracket can be identified as an increase of this value. An end bracket can be
     /// identified as an decrease of this value.
-    pub bracket_count: i32,
+    pub bracket_count: BracketLevel,
     /// The type of Token.
     /// # Examples
     /// - `Number`,
@@ -50,7 +53,7 @@ impl Token {
     /// # Arguements
     /// - `bracket_count`: the amount of brackets wrapped around the token
     /// - `token_type`: the type of Token
-    pub const fn new(bracket_count: i32, token_type: TokenType) -> Self {
+    pub const fn new(bracket_count: BracketLevel, token_type: TokenType) -> Self {
         Self {
             bracket_count,
             token_type,
@@ -111,7 +114,7 @@ impl TokenType {
     }
 }
 
-fn mul_start_bracket_handle(r: &mut Vec<Token>, bracket_count: &mut i32) {
+fn mul_start_bracket_handle(r: &mut Vec<Token>, bracket_count: &mut BracketLevel) {
     let Some(last_token) = r.last() else {
         return;
     };
@@ -246,16 +249,22 @@ impl Error for TokenParseError {}
 /// _1.0_ will always become _1_.
 pub fn reconstruct_tokens(tokens: &[Token], include_spacing: bool) -> String {
     let mut b = String::with_capacity(16);
-    let mut last_bracket_count = 0i32;
+    let mut last_bracket_count: BracketLevel = 0;
 
     for t in tokens {
-        let bracket_diff = t.bracket_count - last_bracket_count;
-        if bracket_diff > 0 {
+        let is_start_bracket = t.bracket_count > last_bracket_count;
+        let bracket_diff = if is_start_bracket {
+            t.bracket_count - last_bracket_count
+        } else {
+            last_bracket_count - t.bracket_count
+        };
+
+        if is_start_bracket && bracket_diff != 0 {
             // bracket (
             b.push_str(&"(".repeat(bracket_diff as usize));
-        } else if bracket_diff < 0 {
+        } else if !is_start_bracket && bracket_diff != 0 {
             // bracket )
-            b.push_str(&")".repeat(-bracket_diff as usize));
+            b.push_str(&")".repeat(bracket_diff as usize));
         }
 
         match t.token_type {
