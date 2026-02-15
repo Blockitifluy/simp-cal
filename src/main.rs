@@ -19,11 +19,7 @@ pub mod token;
 
 use std::{env, error::Error, io};
 
-use crate::{
-    eval::eval_calculation,
-    expression::{Expression, tree_tokens},
-    token::{parse_tokens, reduce_calculation},
-};
+use crate::{eval::eval_calculation, expression::ExprStream, token::TokenStream};
 
 macro_rules! verbose {
     ($v:expr, $($e:expr),*) => {
@@ -65,23 +61,16 @@ impl Default for ProgramFlags {
     }
 }
 
-fn parse_calculation(buffer: &str, flags: ProgramFlags) -> ProgramResult<Vec<Expression>> {
-    let cal = reduce_calculation(buffer);
-
+fn parse_calculation(buffer: &str, flags: ProgramFlags) -> ProgramResult<ExprStream> {
     // Parsing
+    verbose!(flags.verbose, "# Parsing\ninput calculation: {}", buffer);
 
-    verbose!(flags.verbose, "# Parsing\ninput calculation: {}", cal);
+    let tokens = TokenStream::from_text(buffer)?;
+    verbose!(flags.verbose, "tokens: {}", tokens);
 
-    let tokens = parse_tokens(&cal)?;
-
-    verbose!(flags.verbose, "tokens: {:?}", tokens);
-
-    let exprs = tree_tokens(&tokens)?;
+    let exprs = ExprStream::from_token_stream(&tokens)?;
     if flags.verbose || !flags.eval {
-        verbose!(flags.verbose, "expressions:");
-        for expr in &exprs {
-            println!("{expr}");
-        }
+        verbose!(flags.verbose, "expressions: {exprs}");
     }
     Ok(exprs)
 }

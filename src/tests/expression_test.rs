@@ -4,11 +4,11 @@
 use crate::{
     expr_left, expr_op, expr_right, expr_unary_op, expr_unary_whole, expr_whole,
     expression::{
-        ExprBind, Expression, ExpressionInvalidReason, ExpressionParsingError, ExpressionType,
-        is_expressions_valid, tree_tokens,
+        ExprBind, ExprStream, Expression, ExpressionInvalidReason, ExpressionParsingError,
+        ExpressionType,
     },
     operator::*,
-    token::{Token, TokenType, parse_tokens},
+    token::{Token, TokenStream, TokenType},
     token_infix, token_number, token_unary,
 };
 
@@ -17,7 +17,9 @@ use super::examples::{CALCULATION_EXAMPLE, EXAMPLE_EXPRESSIONS};
 #[test]
 fn expression_cal() {
     assert_eq!(
-        tree_tokens(&parse_tokens(CALCULATION_EXAMPLE).unwrap()).unwrap(),
+        TokenStream::from_text_force(CALCULATION_EXAMPLE)
+            .as_expressions_force()
+            .to_vec(),
         EXAMPLE_EXPRESSIONS
     );
 }
@@ -33,9 +35,10 @@ fn expression_cal_fuse() {
     ];
 
     assert_eq!(
-        &expression_test,
-        &tree_tokens(&parse_tokens("10*(2+1-(6*2))").expect("couldn't parse tokens"))
-            .expect("couln't parse expression")
+        expression_test,
+        TokenStream::from_text_force("10*(2+1-(6*2))")
+            .as_expressions_force()
+            .to_vec()
     );
 }
 
@@ -51,8 +54,9 @@ fn pythagoras_expression() {
 
     assert_eq!(
         expected_expr,
-        tree_tokens(&parse_tokens("(3^2+4^2)^0.5").expect("couldn't parse tokens"))
-            .expect("couldn't parse expression")
+        TokenStream::from_text_force("(3^2+4^2)^0.5")
+            .as_expressions_force()
+            .to_vec()
     );
 }
 
@@ -67,7 +71,7 @@ fn operant_not_number_next() {
         token_infix!(1, InfixOperator::Mul),
     ];
 
-    tree_tokens(&tokens).unwrap();
+    let _ = ExprStream::from_token_vec_force(&tokens);
 }
 
 #[test]
@@ -81,24 +85,24 @@ fn operant_not_number_prev() {
         token_number!(1, 1.0),
     ];
 
-    tree_tokens(&tokens).unwrap();
+    let _ = ExprStream::from_token_vec_force(&tokens);
 }
 
 #[test]
 #[should_panic]
 fn expr_prev_infix_err() {
     let tokens = vec![token_infix!(InfixOperator::Add), token_number!(1.0)];
-    tree_tokens(&tokens).unwrap();
+    let _ = ExprStream::from_token_vec_force(&tokens);
 
     let tokens = vec![token_number!(1.0), token_infix!(InfixOperator::Add)];
-    tree_tokens(&tokens).unwrap();
+    let _ = ExprStream::from_token_vec_force(&tokens);
 }
 
 #[test]
 #[should_panic]
 fn expr_unary_no_neighbour() {
     let tokens = vec![token_unary!(UnaryOperator::Neg)];
-    tree_tokens(&tokens).unwrap();
+    let _ = ExprStream::from_token_vec_force(&tokens);
 }
 
 #[test]
@@ -196,12 +200,15 @@ fn is_unary() {
 
 #[test]
 fn valid_expr() {
-    assert_eq!(is_expressions_valid(&EXAMPLE_EXPRESSIONS), None);
+    assert_eq!(
+        ExprStream::from_vec(EXAMPLE_EXPRESSIONS.to_vec()).is_valid(),
+        None
+    );
 }
 
 #[test]
 fn valid_expr_empty() {
-    assert!(is_expressions_valid(&Vec::new()).is_none());
+    assert!(ExprStream::from_vec(Vec::new()).is_valid().is_none());
 }
 
 #[test]
@@ -211,7 +218,7 @@ fn invalid_first_expr_whole() {
         expr_whole!(InfixOperator::Add, 2.0, 2.0),
     ];
 
-    let reason = is_expressions_valid(&exprs).unwrap();
+    let reason = ExprStream::from_vec(exprs).is_valid().unwrap();
 
     assert!(matches!(reason, ExpressionInvalidReason::FirstExprNotWhole));
 }
@@ -223,7 +230,7 @@ fn invalid_reference_error() {
         expr_left!(InfixOperator::Add, 2.0, 2),
     ];
 
-    let reason = is_expressions_valid(&exprs).unwrap();
+    let reason = ExprStream::from_vec(exprs).is_valid().unwrap();
 
     assert!(matches!(
         reason,
@@ -238,7 +245,7 @@ fn invalid_unreference_expr() {
         expr_whole!(InfixOperator::Add, 1.0, 2.0),
     ];
 
-    let reason = is_expressions_valid(&exprs).unwrap();
+    let reason = ExprStream::from_vec(exprs).is_valid().unwrap();
 
     assert!(matches!(
         reason,

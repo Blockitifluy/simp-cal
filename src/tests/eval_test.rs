@@ -7,12 +7,11 @@ use crate::{
     expression::*,
     operator::*,
     tests::examples::{CALCULATION_EXAMPLE, EXAMPLE_RESULT},
-    token::parse_tokens,
 };
 
 #[test]
 fn eval_cal() {
-    let expr = tree_tokens(&parse_tokens(CALCULATION_EXAMPLE).unwrap()).unwrap();
+    let expr = ExprStream::from_text_force(CALCULATION_EXAMPLE);
 
     assert_eq!(eval_calculation(&expr).unwrap(), EXAMPLE_RESULT);
 }

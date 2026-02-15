@@ -1,9 +1,14 @@
 //! Handles converting tokens into expressions for evalulation a calculation.
 use crate::{
+    eval::eval_calculation,
     operator::{OperantPosition, Operator, ProcessedOperator, UnaryType, get_operator_in_tokens},
-    token::{Token, TokenType},
+    token::{Token, TokenStream, TokenType},
 };
-use std::{error::Error, fmt};
+use std::{
+    error::Error,
+    fmt,
+    ops::{Deref, DerefMut},
+};
 
 /// Whole expression
 #[macro_export]
@@ -492,39 +497,216 @@ fn fuse_taken_tokens(taken_tokens: &mut Vec<ExprBind>) {
     taken_tokens.truncate(write_idx + 1);
 }
 
-/// Converts a `Token` slice into a vec of `Expression`s.
-/// # Arguements
-/// - `tokens`: a slice of `Token`s
-/// # Errors
-/// - `NoNeighbouringOperants`: an operator doesn't have an valid operant at atleast one side of it (e.g. _1 +_ or _+ 1_)
-/// - `OperantNotNumber`: an operant of an `Whole`, `Left` or `Right` expression type is not a valid number
-/// # Returns
-/// A vec of `Expression`s.
-pub fn tree_tokens(tokens: &[Token]) -> Result<Vec<Expression>, ExpressionParsingError> {
-    let mut operators = get_operator_in_tokens(tokens);
-    operators.sort();
+/// A stream of `Expression`s.
+///
+/// Used for calculations.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct ExprStream {
+    expressions: Vec<Expression>,
+}
+impl ExprStream {
+    /// Parses text to construct a `ExprStream`.
+    /// # Arguements
+    /// - `cal`: the calculation parsed
+    /// # Errors
+    /// See [`crate::token::TokenParseError`] and [`ExpressionParsingError`]
+    /// # Returns
+    /// Self, or a dynamic error
+    pub fn from_text(cal: &str) -> Result<Self, Box<dyn Error>> {
+        let r = TokenStream::from_text(cal)?;
 
-    let mut expressions = Vec::<Expression>::new();
-    let mut taken_tokens = Vec::<ExprBind>::new();
-
-    for (i, proc_op) in operators.into_iter().enumerate() {
-        let index = proc_op.index;
-        let expr: Expression = operation_in_cal_to_expr(&taken_tokens, tokens, proc_op)?;
-
-        let bind = match expr.operator {
-            Operator::Infix(_) => ExprBind::new_pos(i, index),
-            Operator::Unary(_) => ExprBind::new(i, index, index + 1),
-        };
-
-        expressions.push(expr);
-        taken_tokens.push(bind);
-        fuse_taken_tokens(&mut taken_tokens);
+        Ok(r.as_expressions()?)
     }
 
-    Ok(expressions)
+    /// Parses text to construct a `ExprStream`, panicing when it encounters an error.
+    /// # Arguements
+    /// - `cal`: the calculation parsed
+    /// # Panics
+    /// Encountering an error
+    /// # Returns
+    /// `Self`
+    #[must_use]
+    pub fn from_text_force(cal: &str) -> Self {
+        Self::from_text(cal).expect("couldn't parse expressions")
+    }
+
+    /// Parses tokens to construct a `ExprStream`.
+    /// # Arguements
+    /// - `cal`: the calculation parsed
+    /// # Errors
+    /// See [`TokenStream::as_expressions`]
+    /// # Returns
+    /// `Self`
+    pub fn from_token_vec(tokens: &[Token]) -> Result<Self, ExpressionParsingError> {
+        TokenStream::from_vec(tokens.to_vec()).as_expressions()
+    }
+
+    /// Parses tokens to construct a `ExprStream`, panicing when it encounters an error.
+    /// # Arguements
+    /// - `cal`: the calculation parsed
+    /// # Panics
+    /// Encountering an error
+    /// # Returns
+    /// `Self`
+    #[must_use]
+    pub fn from_token_vec_force(tokens: &[Token]) -> Self {
+        Self::from_token_vec(tokens).expect("couldn't parse expressions")
+    }
+
+    /// Converts a `Token` slice into a vec of `Expression`s.
+    /// # Arguements
+    /// - `tokens`: a slice of `Token`s
+    /// # Errors
+    /// - `NoNeighbouringOperants`: an operator doesn't have an valid operant at atleast one side of it (e.g. _1 +_ or _+ 1_)
+    /// - `OperantNotNumber`: an operant of an `Whole`, `Left` or `Right` expression type is not a valid number
+    /// # Returns
+    /// A vec of `Expression`s.
+    pub fn from_token_stream(stream: &TokenStream) -> Result<Self, ExpressionParsingError> {
+        let mut operators = get_operator_in_tokens(stream);
+        operators.sort();
+
+        let mut expressions = Vec::<Expression>::new();
+        let mut taken_tokens = Vec::<ExprBind>::new();
+
+        for (i, proc_op) in operators.into_iter().enumerate() {
+            let index = proc_op.index;
+            let expr: Expression = operation_in_cal_to_expr(&taken_tokens, stream, proc_op)?;
+
+            let bind = match expr.operator {
+                Operator::Infix(_) => ExprBind::new_pos(i, index),
+                Operator::Unary(_) => ExprBind::new(i, index, index + 1),
+            };
+
+            expressions.push(expr);
+            taken_tokens.push(bind);
+            fuse_taken_tokens(&mut taken_tokens);
+        }
+
+        Ok(Self::from_vec(expressions))
+    }
+
+    /// Constructs a new `ExprStream` from a vector of `Expression`s.
+    /// # Arguements
+    /// - `expressions`: the vector
+    /// # Returns
+    /// `Self`
+    #[must_use]
+    pub const fn from_vec(expressions: Vec<Expression>) -> Self {
+        Self { expressions }
+    }
+
+    /// Evalulates the value of `Self`
+    /// # Errors
+    /// See [`crate::eval::eval_calculation`]
+    /// # Returns
+    /// A number that the `ExprStream` is equal to or an `EvalCalculationErr`.
+    pub fn evalulate(&self) -> Result<f32, crate::eval::EvalCalculationErr> {
+        eval_calculation(&self.expressions)
+    }
+
+    /// Checks if a expression slice is valid, this means it can be calculated without error.
+    /// # Arguements
+    /// - `expr`: a slice of expressions
+    /// # Returns
+    /// `None`, if the slice vaild, otherwise returns the reason why it is invalid.
+    /// # Note
+    /// This doesn't check for expressions that don't follow the order of operations.
+    #[must_use]
+    pub fn is_valid(&self) -> Option<ExpressionInvalidReason> {
+        // first, the first token has to be the Whole type
+        let first = self.first()?;
+
+        if !matches!(first.expr_type, ExpressionType::Whole { .. }) {
+            return Some(ExpressionInvalidReason::FirstExprNotWhole);
+        }
+
+        // secondly, every expression has to be referenced once unless it's the last one
+        let mut unrefed = Vec::with_capacity(self.len() - 1);
+
+        macro_rules! rm_element {
+            ($e:expr) => {
+                let Some(i) = unrefed.iter().position(|x| *x == $e) else {
+                    return Some(ExpressionInvalidReason::ReferenceError { index: $e });
+                };
+                unrefed.swap_remove(i);
+            };
+        }
+
+        for (i, expr) in self.iter().enumerate() {
+            let is_last = i == self.len() - 1;
+            match expr.expr_type {
+                ExpressionType::Whole { .. } | ExpressionType::UnaryWhole { .. } => {}
+                ExpressionType::Left { right, .. } => {
+                    rm_element!(right);
+                }
+                ExpressionType::Right { left, .. } => {
+                    rm_element!(left);
+                }
+                ExpressionType::Op { left, right } => {
+                    rm_element!(left);
+                    rm_element!(right);
+                }
+                ExpressionType::UnaryOp { operant } => {
+                    rm_element!(operant);
+                }
+            }
+
+            if !is_last {
+                unrefed.push(i);
+            }
+        }
+
+        if unrefed.is_empty() {
+            None
+        } else {
+            Some(ExpressionInvalidReason::UnreferencedExprs { indices: unrefed })
+        }
+    }
+
+    /// Converts `Self` into a vector of `Expression`s.
+    #[must_use]
+    pub fn to_vec(self) -> Vec<Expression> {
+        self.into_iter().collect::<Vec<_>>()
+    }
 }
 
-/// A reason why an expression slice is valid.
+impl IntoIterator for ExprStream {
+    type Item = Expression;
+    type IntoIter = <Vec<Expression> as IntoIterator>::IntoIter;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.expressions.into_iter()
+    }
+}
+
+impl Deref for ExprStream {
+    type Target = [Expression];
+
+    fn deref(&self) -> &Self::Target {
+        &self.expressions[..]
+    }
+}
+
+impl DerefMut for ExprStream {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.expressions[..]
+    }
+}
+
+impl fmt::Display for ExprStream {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        for (i, expr) in self.iter().enumerate() {
+            if i == self.expressions.len() - 1 {
+                write!(f, "{expr}")?;
+                break;
+            }
+            write!(f, "{expr}, ")?;
+        }
+        Ok(())
+    }
+}
+
+/// A reason why an `ExpressionStream` isn't valid.
 #[derive(Debug, PartialEq, Eq)]
 pub enum ExpressionInvalidReason {
     /// When the first expression is not the `ExpressionType` _Whole_.
@@ -553,66 +735,6 @@ impl fmt::Display for ExpressionInvalidReason {
                 write!(f, "the expressions reference {index}, doesn't exist")
             }
         }
-    }
-}
-
-/// Checks if a expression slice is valid, this means it can be calculated without error.
-/// # Arguements
-/// - `expr`: a slice of expressions
-/// # Returns
-/// `None`, if the slice vaild, otherwise returns the reason why it is invalid.
-/// # Note
-/// This doesn't check for expressions that don't follow the order of operations.
-#[must_use]
-pub fn is_expressions_valid(exprs: &[Expression]) -> Option<ExpressionInvalidReason> {
-    // first, the first token has to be the Whole type
-
-    let first = exprs.first()?;
-
-    if !matches!(first.expr_type, ExpressionType::Whole { .. }) {
-        return Some(ExpressionInvalidReason::FirstExprNotWhole);
-    }
-
-    // secondly, every expression has to be referenced once unless it's the last one
-    let mut unrefed = Vec::with_capacity(exprs.len() - 1);
-
-    macro_rules! rm_element {
-        ($e:expr) => {
-            let Some(i) = unrefed.iter().position(|x| *x == $e) else {
-                return Some(ExpressionInvalidReason::ReferenceError { index: $e });
-            };
-            unrefed.swap_remove(i);
-        };
-    }
-
-    for (i, expr) in exprs.iter().enumerate() {
-        let is_last = i == exprs.len() - 1;
-        match expr.expr_type {
-            ExpressionType::Whole { .. } | ExpressionType::UnaryWhole { .. } => {}
-            ExpressionType::Left { right, .. } => {
-                rm_element!(right);
-            }
-            ExpressionType::Right { left, .. } => {
-                rm_element!(left);
-            }
-            ExpressionType::Op { left, right } => {
-                rm_element!(left);
-                rm_element!(right);
-            }
-            ExpressionType::UnaryOp { operant } => {
-                rm_element!(operant);
-            }
-        }
-
-        if !is_last {
-            unrefed.push(i);
-        }
-    }
-
-    if unrefed.is_empty() {
-        None
-    } else {
-        Some(ExpressionInvalidReason::UnreferencedExprs { indices: unrefed })
     }
 }
 

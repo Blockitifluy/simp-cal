@@ -2,9 +2,16 @@
 use std::{
     error::Error,
     fmt::{self, Write as _},
+    ops::{Deref, DerefMut},
 };
 
-use crate::operator::{InfixOperator, OperatorTrait, UnaryOperator, UnaryType};
+use crate::{
+    expression::{ExprStream, ExpressionParsingError},
+    operator::{
+        InfixOperator, OperatorTrait, ProcessedOperator, UnaryOperator, UnaryType,
+        get_operator_in_tokens,
+    },
+};
 
 /// Creates a new `InfixOperator` token.
 /// # Arguements
@@ -164,6 +171,372 @@ impl TokenType {
     }
 }
 
+/// A stream of `Token`s.
+///
+/// Used for calculations.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct TokenStream {
+    tokens: Vec<Token>,
+}
+impl TokenStream {
+    /// Parses the tokens of a calculation.
+    /// # Arguements
+    /// - `cal`: calculation string
+    /// # Errors
+    /// - `NumberParse`: Operant wasn't a valid number.
+    /// - `HangingBracket`: Calculation has a bracket that hasn't been closed or opened.
+    /// - `InvalidCharacter`: An invalid character or a character used in the wrong context.
+    /// - `EmptyBracket`: A bracket has no characters inside that could be parsed
+    /// # Returns
+    /// A result of:
+    /// - `Ok`: A vec of tokens
+    /// - `Err`: A string
+    pub fn from_text(cal: &str) -> Result<Self, TokenParseError> {
+        let mut r: Vec<Token> = Vec::with_capacity(8);
+
+        let mut num_b = String::with_capacity(16);
+        let mut bracket_count = 0;
+        let mut last_bracket = 0usize;
+        let mut prev_infix = false;
+
+        macro_rules! parse_b {
+            () => {
+                if !num_b.is_empty() {
+                    let Ok(num) = num_b.parse::<f32>() else {
+                        return Err(TokenParseError::NumberParse { token: num_b });
+                    };
+
+                    r.push(token_number!(bracket_count, num));
+                    num_b.clear();
+                }
+            };
+        }
+
+        for (i, c) in cal.chars().enumerate().filter(|(_, c)| !c.is_whitespace()) {
+            if c == ')' {
+                if bracket_count == 0 {
+                    return Err(TokenParseError::HangingBracket);
+                }
+                if last_bracket + 1 == i {
+                    return Err(TokenParseError::EmptyBracket { at: i });
+                }
+                parse_b!();
+                bracket_count -= 1;
+                continue;
+            }
+
+            if c == '(' {
+                parse_b!();
+                prev_infix = true;
+                bracket_count += 1;
+                last_bracket = i;
+                mul_start_bracket_handle(&mut r, bracket_count);
+                continue;
+            }
+
+            // operators and numbers
+            if let Some(infix) = InfixOperator::get_operator_from_sign(c)
+                && !prev_infix
+                && i != 0
+            {
+                prev_infix = true;
+                parse_b!();
+                r.push(token_infix!(bracket_count, infix));
+                continue;
+            } else if let Some(unary) = UnaryOperator::get_operator_from_sign(c) {
+                prev_infix = false;
+                r.push(token_unary!(bracket_count, unary));
+                parse_b!();
+                continue;
+            }
+            prev_infix = false;
+
+            if c.is_numeric() || c == '.' {
+                num_b.push(c);
+                continue;
+            }
+
+            return Err(TokenParseError::InvalidCharacter { character: c });
+        }
+
+        parse_b!();
+
+        if bracket_count != 0 {
+            return Err(TokenParseError::HangingBracket);
+        }
+        r.shrink_to_fit();
+        Ok(Self::from_vec(r))
+    }
+
+    /// Parses text to construct a `TokenStream`.
+    /// # Arguements
+    /// - `cal`: the calculation parsed
+    /// # Panics
+    /// Encountering an error
+    /// # Returns
+    /// `Self`
+    #[must_use]
+    pub fn from_text_force(cal: &str) -> Self {
+        Self::from_text(cal).expect("couldn't parse tokens")
+    }
+
+    /// Constructs a new `TokenStream` from a vector of `Token`s.
+    /// # Arguements
+    /// - `tokens`: the vector
+    /// # Returns
+    /// `Self`
+    #[must_use]
+    pub const fn from_vec(tokens: Vec<Token>) -> Self {
+        Self { tokens }
+    }
+
+    /// Gets all of the operators, and returns them as `ProcessedOperator`.
+    /// # Returns
+    /// A vector of `ProcessedOperator`s
+    #[must_use]
+    pub fn get_operators(&self) -> Vec<ProcessedOperator> {
+        get_operator_in_tokens(&self.tokens)
+    }
+
+    /// Evalulates the value of `Self`.
+    /// # Errors
+    /// See [`ExpressionParsingError`] and [`crate::eval::EvalCalculationErr`]
+    /// # Returns
+    /// A number that `TokenStream` is equal to or an `EvalCalculationErr`
+    pub fn evalulate(&self) -> Result<f32, Box<dyn Error>> {
+        let r = self.as_expressions()?.evalulate()?;
+
+        Ok(r)
+    }
+
+    /// Checks if a token slice is valid, this means it can be parsed into tokens and calculated without error.
+    /// # Arguements
+    /// - `token`: a slice of tokens
+    /// # Returns
+    /// `None`, if the slice vaild, otherwise returns the reason why it is invalid.
+    #[must_use]
+    pub fn is_valid(&self) -> Option<TokenInvalidReason> {
+        // Should start with a number or unary value
+        let first = self.first()?;
+        if !first.token_type.is_unary() && !first.token_type.is_number() {
+            return Some(TokenInvalidReason::InvalidStart);
+        }
+
+        // Should end with a number
+        let last = self.last()?;
+        if !last.token_type.is_number() {
+            return Some(TokenInvalidReason::InvalidEnd);
+        }
+
+        if self.len() == 1 {
+            let op = self[0];
+            if op.token_type.is_number() {
+                return None;
+            }
+            return Some(TokenInvalidReason::NumberPrevInvalid);
+        }
+
+        for tok_window in self.windows(2usize) {
+            let (other, current) = (tok_window[0], tok_window[1]);
+
+            let err = match current.token_type {
+                // Two numbers next to eachother
+                TokenType::Number(_) => {
+                    if other.token_type.is_operator() {
+                        None
+                    } else {
+                        Some(TokenInvalidReason::NumberPrevInvalid)
+                    }
+                }
+                // Two infix next to eachother
+                TokenType::Infix(_) => {
+                    if other.token_type.is_number() || other.token_type.is_unary() {
+                        None
+                    } else {
+                        Some(TokenInvalidReason::InfixPrevInvalid)
+                    }
+                }
+                // Unary not next to infix
+                TokenType::Unary(_) => {
+                    if other.token_type.is_infix() {
+                        None
+                    } else {
+                        Some(TokenInvalidReason::UnaryPrevInvalid)
+                    }
+                }
+            };
+
+            if err.is_some() {
+                return err;
+            }
+        }
+
+        // Operator's bracket_count should be lower equal than it's operants
+        for (i, tok) in self.iter().enumerate() {
+            match tok.token_type {
+                TokenType::Infix(_) => {
+                    let Some(prev) = self.get(i - 1) else {
+                        return Some(TokenInvalidReason::InfixPrevInvalid);
+                    };
+
+                    let Some(next) = self.get(i + 1) else {
+                        return Some(TokenInvalidReason::InfixPrevInvalid);
+                    };
+
+                    if prev.bracket_count < tok.bracket_count
+                        || next.bracket_count < tok.bracket_count
+                    {
+                        return Some(TokenInvalidReason::OperatorHigherBracketLevel { at: i });
+                    }
+                }
+                TokenType::Unary(_) => {
+                    let Some(next) = self.get(i + 1) else {
+                        return Some(TokenInvalidReason::InfixPrevInvalid);
+                    };
+
+                    if next.bracket_count < tok.bracket_count {
+                        return Some(TokenInvalidReason::OperatorHigherBracketLevel { at: i });
+                    }
+                }
+                TokenType::Number(_) => (),
+            }
+        }
+
+        None
+    }
+
+    /// Creates an `ExprStream` from `Self`.
+    /// # Errors
+    /// See [`tree_tokens`].
+    /// # Returns
+    /// `ExprStream`, or an `ExpressionParsingError`
+    pub fn as_expressions(&self) -> Result<ExprStream, ExpressionParsingError> {
+        ExprStream::from_token_stream(self)
+    }
+
+    /// Creates an `ExprStream` from `Self`, panicing when it encounters an error.
+    /// # Panics
+    /// Encountering an error
+    /// # Returns
+    /// `ExprStream`, or an `ExpressionParsingError`
+    #[must_use]
+    pub fn as_expressions_force(&self) -> ExprStream {
+        self.as_expressions().expect("couldn't parse expressions")
+    }
+
+    /// Converts `Self` into a vector of `Token`s.
+    #[must_use]
+    pub fn to_vec(self) -> Vec<Token> {
+        self.into_iter().collect::<Vec<_>>()
+    }
+
+    /// Reconstructs or unparses tokens into it's `String` form.
+    /// # Arguements
+    /// - `tokens`: the tokens to be reconstructed
+    /// - `include_spacing`: include whitespace between operators
+    /// # Returns
+    /// The reconstructed string
+    /// # Examples
+    /// ```
+    /// let tokens = vec![token_number!(0, 1.0), token_operator!(0, Operator::Add), token_number!(0, 2.0)];
+    ///
+    /// assert_eq!(reconstruct_tokens(&tokens, false), "1+1")
+    /// assert_eq!(reconstruct_tokens(&tokens, true), "1 + 1")
+    /// ```
+    /// # Note
+    /// Can accept malformed tokens, and reconstruction doesn't match exactly with it's inputs e.g.
+    /// _1.0_ will always become _1_.
+    #[must_use]
+    pub fn as_text(&self, include_spacing: bool) -> String {
+        let mut b = String::with_capacity(16);
+        let mut last_bracket_count = 0;
+        // let mut suffix_to_push: Option<String> = None;
+
+        for t in &self.tokens {
+            let is_start_bracket = t.bracket_count > last_bracket_count;
+            let bracket_diff = if is_start_bracket {
+                t.bracket_count - last_bracket_count
+            } else {
+                last_bracket_count - t.bracket_count
+            };
+
+            if is_start_bracket && bracket_diff != 0 {
+                // bracket (
+                b.push_str(&"(".repeat(bracket_diff as usize));
+            } else if !is_start_bracket && bracket_diff != 0 {
+                // bracket )
+                b.push_str(&")".repeat(bracket_diff as usize));
+            }
+
+            match t.token_type {
+                TokenType::Number(num) => {
+                    b.push_str(&num.to_string());
+                    // if let Some(_suffix) = suffix_to_push {
+                    //     b.push_str(&suffix);
+                    //     suffix_to_push = None;
+                    // }
+                }
+                TokenType::Infix(op) => {
+                    if include_spacing {
+                        let _ = write!(b, " {} ", op.as_sign());
+                    } else {
+                        b.push_str(op.as_sign());
+                    }
+                }
+                TokenType::Unary(op) => {
+                    if op.unary_type() == UnaryType::Prefix {
+                        b.push_str(op.as_sign());
+                    } else {
+                        // suffix_to_push = Some(op.as_sign().to_owned());
+                        unimplemented!();
+                    }
+                }
+            }
+
+            last_bracket_count = t.bracket_count;
+        }
+
+        b.shrink_to_fit();
+        b
+    }
+}
+
+impl IntoIterator for TokenStream {
+    type Item = Token;
+    type IntoIter = <Vec<Token> as IntoIterator>::IntoIter;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.tokens.into_iter()
+    }
+}
+
+impl Deref for TokenStream {
+    type Target = [Token];
+
+    fn deref(&self) -> &Self::Target {
+        &self.tokens[..]
+    }
+}
+
+impl DerefMut for TokenStream {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.tokens[..]
+    }
+}
+
+impl fmt::Display for TokenStream {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        for (i, tok) in self.iter().enumerate() {
+            if i == self.tokens.len() - 1 {
+                write!(f, "{tok}")?;
+                break;
+            }
+            write!(f, "{tok}, ")?;
+        }
+        Ok(())
+    }
+}
+
 fn mul_start_bracket_handle(r: &mut Vec<Token>, bracket_count: BracketLevel) {
     let Some(last_token) = r.last() else {
         return;
@@ -172,95 +545,6 @@ fn mul_start_bracket_handle(r: &mut Vec<Token>, bracket_count: BracketLevel) {
     if !last_token.token_type.is_operator() {
         r.push(token_infix!(bracket_count - 1, InfixOperator::Mul));
     }
-}
-
-/// Parses the tokens of a calculation.
-/// # Arguements
-/// - `cal`: calculation string
-/// # Errors
-/// - `NumberParse`: Operant wasn't a valid number.
-/// - `HangingBracket`: Calculation has a bracket that hasn't been closed or opened.
-/// - `InvalidCharacter`: An invalid character or a character used in the wrong context.
-/// - `EmptyBracket`: A bracket has no characters inside that could be parsed
-/// # Returns
-/// A result of:
-/// - `Ok`: A vec of tokens
-/// - `Err`: A string
-pub fn parse_tokens(cal: &str) -> Result<Vec<Token>, TokenParseError> {
-    let mut r: Vec<Token> = Vec::with_capacity(8);
-
-    let mut num_b = String::with_capacity(16);
-    let mut bracket_count = 0;
-    let mut last_bracket = 0usize;
-    let mut prev_infix = false;
-
-    macro_rules! parse_b {
-        () => {
-            if !num_b.is_empty() {
-                let Ok(num) = num_b.parse::<f32>() else {
-                    return Err(TokenParseError::NumberParse { token: num_b });
-                };
-
-                r.push(token_number!(bracket_count, num));
-                num_b.clear();
-            }
-        };
-    }
-
-    for (i, c) in cal.chars().enumerate() {
-        if c == ')' {
-            if bracket_count == 0 {
-                return Err(TokenParseError::HangingBracket);
-            }
-            if last_bracket + 1 == i {
-                return Err(TokenParseError::EmptyBracket { at: i });
-            }
-            parse_b!();
-            bracket_count -= 1;
-            continue;
-        }
-
-        if c == '(' {
-            parse_b!();
-            prev_infix = true;
-            bracket_count += 1;
-            last_bracket = i;
-            mul_start_bracket_handle(&mut r, bracket_count);
-            continue;
-        }
-
-        // operators and numbers
-        if let Some(infix) = InfixOperator::get_operator_from_sign(c)
-            && !prev_infix
-            && i != 0
-        {
-            prev_infix = true;
-            parse_b!();
-            r.push(token_infix!(bracket_count, infix));
-            continue;
-        } else if let Some(unary) = UnaryOperator::get_operator_from_sign(c) {
-            prev_infix = false;
-            r.push(token_unary!(bracket_count, unary));
-            parse_b!();
-            continue;
-        }
-        prev_infix = false;
-
-        if c.is_numeric() || c == '.' {
-            num_b.push(c);
-            continue;
-        }
-
-        return Err(TokenParseError::InvalidCharacter { character: c });
-    }
-
-    parse_b!();
-
-    if bracket_count != 0 {
-        return Err(TokenParseError::HangingBracket);
-    }
-    r.shrink_to_fit();
-    Ok(r)
 }
 
 /// An error of relating to parsing tokens.
@@ -299,93 +583,44 @@ impl fmt::Display for TokenParseError {
 
 impl Error for TokenParseError {}
 
-/// Reconstructs or unparses tokens into it's `String` form.
-/// # Arguements
-/// - `tokens`: the tokens to be reconstructed
-/// - `include_spacing`: include whitespace between operators
-/// # Returns
-/// The reconstructed string
-/// # Examples
-/// ```
-/// let tokens = vec![token_number!(0, 1.0), token_operator!(0, Operator::Add), token_number!(0, 2.0)];
-///
-/// assert_eq!(reconstruct_tokens(&tokens, false), "1+1")
-/// assert_eq!(reconstruct_tokens(&tokens, true), "1 + 1")
-/// ```
-/// # Note
-/// Can accept malformed tokens, and reconstruction doesn't match exactly with it's inputs e.g.
-/// _1.0_ will always become _1_.
-#[must_use]
-pub fn reconstruct_tokens(tokens: &[Token], include_spacing: bool) -> String {
-    let mut b = String::with_capacity(16);
-    let mut last_bracket_count = 0;
-    // let mut suffix_to_push: Option<String> = None;
-
-    for t in tokens {
-        let is_start_bracket = t.bracket_count > last_bracket_count;
-        let bracket_diff = if is_start_bracket {
-            t.bracket_count - last_bracket_count
-        } else {
-            last_bracket_count - t.bracket_count
-        };
-
-        if is_start_bracket && bracket_diff != 0 {
-            // bracket (
-            b.push_str(&"(".repeat(bracket_diff as usize));
-        } else if !is_start_bracket && bracket_diff != 0 {
-            // bracket )
-            b.push_str(&")".repeat(bracket_diff as usize));
-        }
-
-        match t.token_type {
-            TokenType::Number(num) => {
-                b.push_str(&num.to_string());
-                // if let Some(_suffix) = suffix_to_push {
-                //     b.push_str(&suffix);
-                //     suffix_to_push = None;
-                // }
-            }
-            TokenType::Infix(op) => {
-                if include_spacing {
-                    let _ = write!(b, " {} ", op.as_sign());
-                } else {
-                    b.push_str(op.as_sign());
-                }
-            }
-            TokenType::Unary(op) => {
-                if op.unary_type() == UnaryType::Prefix {
-                    b.push_str(op.as_sign());
-                } else {
-                    // suffix_to_push = Some(op.as_sign().to_owned());
-                    unimplemented!();
-                }
-            }
-        }
-
-        last_bracket_count = t.bracket_count;
-    }
-
-    b.shrink_to_fit();
-    b
+/// A reason why an `TokenStream` isn't valid.
+#[derive(Debug)]
+pub enum TokenInvalidReason {
+    /// Neighbour is not `Operator`
+    NumberPrevInvalid,
+    /// Neighbour is not an `Unary` or `Number`
+    InfixPrevInvalid,
+    /// Neighbour is not an `Infix`
+    UnaryPrevInvalid,
+    /// The first Token isn't a `Unary` or `Number`
+    InvalidStart,
+    /// The last Token isn't a `Number`
+    InvalidEnd,
+    /// Operator has a higher bracket level than it's operants
+    OperatorHigherBracketLevel {
+        /// The index of the error
+        at: usize,
+    },
 }
 
-/// Removes unnessary characters and data from the calculation string, e.g. whitespace.
-/// # Arguements
-/// - `s`: calculation string
-/// # Returns
-/// A reduced calculation
-/// # Example
-/// Input: `1 +   5 ^ 2`
-/// Output: `1+5^2`
-#[must_use]
-pub fn reduce_calculation(s: &str) -> String {
-    let mut r = String::with_capacity(s.len());
-    for c in s.chars() {
-        if c.is_whitespace() {
-            continue;
+impl fmt::Display for TokenInvalidReason {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::InvalidStart => {
+                write!(f, "start of tokens should be a number or unary")
+            }
+            Self::InvalidEnd => write!(f, "end of tokens should be a number"),
+            Self::NumberPrevInvalid => write!(f, "prev of number should be operator"),
+            Self::InfixPrevInvalid => {
+                write!(f, "prev of infix should be unary or number")
+            }
+            Self::UnaryPrevInvalid => write!(f, "prev of unary should be infix"),
+            Self::OperatorHigherBracketLevel { at } => write!(
+                f,
+                "operator has a higher bracket level than operants (at: {at})"
+            ),
         }
-
-        r.push(c);
     }
-    r
 }
+
+impl Error for TokenInvalidReason {}
