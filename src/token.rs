@@ -334,6 +334,7 @@ impl TokenStream {
     pub fn is_valid(&self) -> Option<TokenInvalidReason> {
         // Should start with a number or unary value
         let first = self.first()?;
+        println!("{:?}", first.token_type);
         if !first.token_type.is_unary() && !first.token_type.is_number() {
             return Some(TokenInvalidReason::InvalidStart);
         }
@@ -345,45 +346,31 @@ impl TokenStream {
         }
 
         if self.len() == 1 {
-            let op = self[0];
-            if op.token_type.is_number() {
-                return None;
-            }
-            return Some(TokenInvalidReason::NumberPrevInvalid);
+            return None;
         }
 
         for tok_window in self.windows(2usize) {
             let (other, current) = (tok_window[0], tok_window[1]);
 
-            let err = match current.token_type {
+            match current.token_type {
                 // Two numbers next to another
                 TokenType::Number(_) => {
-                    if other.token_type.is_operator() {
-                        None
-                    } else {
-                        Some(TokenInvalidReason::NumberPrevInvalid)
+                    if !other.token_type.is_operator() {
+                        return Some(TokenInvalidReason::NumberPrevInvalid);
                     }
                 }
                 // Two infix next to another
                 TokenType::Infix(_) => {
-                    if other.token_type.is_number() || other.token_type.is_unary() {
-                        None
-                    } else {
-                        Some(TokenInvalidReason::InfixPrevInvalid)
+                    if !other.token_type.is_number() && !other.token_type.is_unary() {
+                        return Some(TokenInvalidReason::InfixPrevInvalid);
                     }
                 }
                 // Unary not next to infix
                 TokenType::Unary(_) => {
-                    if other.token_type.is_infix() {
-                        None
-                    } else {
-                        Some(TokenInvalidReason::UnaryPrevInvalid)
+                    if !other.token_type.is_infix() {
+                        return Some(TokenInvalidReason::UnaryPrevInvalid);
                     }
                 }
-            };
-
-            if err.is_some() {
-                return err;
             }
         }
 
@@ -440,12 +427,6 @@ impl TokenStream {
         self.as_expressions().expect("couldn't parse expressions")
     }
 
-    /// Converts `Self` into a vector of `Token`s.
-    #[must_use]
-    pub fn to_vec(self) -> Vec<Token> {
-        self.into_iter().collect::<Vec<_>>()
-    }
-
     /// Deconstructs tokens into it's `String` form.
     /// # Arguments
     /// - `tokens`: the tokens to be reconstructed
@@ -467,7 +448,7 @@ impl TokenStream {
         let mut b = String::with_capacity(16);
         let mut last_bracket_count = 0;
         let mut suffix_to_push: Option<String> = None;
-        let mut suffix_bracket = false;
+        let mut suffix_on_number = false;
 
         for (i, t) in self.tokens.iter().enumerate() {
             let is_start_bracket = t.bracket_count > last_bracket_count;
@@ -484,7 +465,7 @@ impl TokenStream {
                 // bracket )
                 b.push_str(&")".repeat(bracket_diff as usize));
                 if let Some(suffix) = &suffix_to_push
-                    && suffix_bracket
+                    && !suffix_on_number
                 {
                     b.push_str(suffix);
                     suffix_to_push = None;
@@ -495,7 +476,7 @@ impl TokenStream {
                 TokenType::Number(num) => {
                     b.push_str(&num.to_string());
                     if let Some(suffix) = &suffix_to_push
-                        && suffix_bracket
+                        && suffix_on_number
                     {
                         b.push_str(suffix);
                         suffix_to_push = None;
@@ -512,11 +493,11 @@ impl TokenStream {
                     UnaryType::Prefix => b.push_str(op.as_sign()),
                     UnaryType::Suffix => {
                         if let Some(next) = self.tokens.get(i + 1)
-                            && next.bracket_count > t.bracket_count
+                            && next.bracket_count != t.bracket_count
                         {
-                            suffix_bracket = false;
+                            suffix_on_number = false;
                         } else {
-                            suffix_bracket = true;
+                            suffix_on_number = true;
                         }
                         suffix_to_push = Some(op.as_sign().to_owned());
                     }
@@ -621,7 +602,7 @@ impl fmt::Display for TokenParseError {
 impl Error for TokenParseError {}
 
 /// A reason why an `TokenStream` isn't valid.
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum TokenInvalidReason {
     /// Neighbor is not `Operator`
     NumberPrevInvalid,

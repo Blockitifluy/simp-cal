@@ -50,6 +50,28 @@ struct ProgramFlags {
     pub help: bool,
     pub version: bool,
 }
+impl ProgramFlags {
+    fn from_args(args: &[String]) -> (Self, Vec<String>) {
+        let mut flags = Self::default();
+        let mut positional_args = Vec::new();
+
+        for (i, arg) in args.iter().enumerate() {
+            if i == 0 {
+                continue;
+            }
+
+            match arg as &str {
+                "-V" | "--verbose" => flags.verbose = true,
+                "--no-eval" => flags.eval = false,
+                "-h" | "--help" => flags.help = true,
+                "-v" | "--version" => flags.version = true,
+                _ => positional_args.push(arg.to_owned()),
+            }
+        }
+
+        (flags, positional_args)
+    }
+}
 impl Default for ProgramFlags {
     fn default() -> Self {
         Self {
@@ -70,7 +92,7 @@ fn parse_calculation(buffer: &str, flags: ProgramFlags) -> ProgramResult<ExprStr
 
     let exprs = ExprStream::from_token_stream(&tokens)?;
     if flags.verbose || !flags.eval {
-        verbose!(flags.verbose, "expressions: {exprs}");
+        println!("expressions: {exprs}");
     }
     Ok(exprs)
 }
@@ -86,33 +108,12 @@ fn calculate_buffer(buffer: &str, flags: ProgramFlags) -> ProgramResult<()> {
     Ok(())
 }
 
-fn parse_args(args: Vec<String>) -> (ProgramFlags, Vec<String>) {
-    let mut flags = ProgramFlags::default();
-    let mut positional_args = Vec::new();
-
-    for (i, arg) in args.into_iter().enumerate() {
-        if i == 0 {
-            continue;
-        }
-
-        match &arg as &str {
-            "-V" | "--verbose" => flags.verbose = true,
-            "--no-eval" => flags.eval = false,
-            "-h" | "--help" => flags.help = true,
-            "-v" | "--version" => flags.version = true,
-            _ => positional_args.push(arg),
-        }
-    }
-
-    (flags, positional_args)
-}
-
 const HELP_MSG: &str = include_str!("helpme.txt");
 const PKG_VERSION: Option<&str> = option_env!("CARGO_PKG_VERSION");
 
 fn main() -> ProgramResult<()> {
     let args: Vec<String> = env::args().collect();
-    let (flags, positional_args) = parse_args(args);
+    let (flags, positional_args) = ProgramFlags::from_args(&args);
 
     if flags.help {
         println!("{HELP_MSG}");

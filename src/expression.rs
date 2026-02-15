@@ -246,7 +246,7 @@ impl ExpressionType {
 }
 
 /// Represents a section of tokens owned by a expression
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ExprBind {
     /// The `Expression` that owns this `ExprBind`.
     pub by: usize,
@@ -298,6 +298,18 @@ impl ExprBind {
             || self.contains(range.end)
             || range.contains(self.start)
             || range.contains(self.end)
+    }
+}
+
+impl PartialOrd for ExprBind {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for ExprBind {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.start.cmp(&other.start).then(self.end.cmp(&other.end))
     }
 }
 
@@ -484,8 +496,7 @@ fn fuse_taken_tokens(taken_tokens: &mut Vec<ExprBind>) {
         return;
     }
 
-    // Sort by.range start, then by.range end
-    taken_tokens.sort_by(|a, b| a.start.cmp(&b.start).then(a.end.cmp(&b.end)));
+    taken_tokens.sort();
 
     let mut write_idx = 0;
 
@@ -585,8 +596,8 @@ impl ExprStream {
         let mut operators = get_operator_in_tokens(stream);
         operators.sort();
 
-        let mut expressions = Vec::<Expression>::new();
-        let mut taken_tokens = Vec::<ExprBind>::new();
+        let mut expressions = Vec::<Expression>::with_capacity(16);
+        let mut taken_tokens = Vec::<ExprBind>::with_capacity(16);
 
         for (i, proc_op) in operators.into_iter().enumerate() {
             let index = proc_op.index;
@@ -602,6 +613,7 @@ impl ExprStream {
             fuse_taken_tokens(&mut taken_tokens);
         }
 
+        expressions.shrink_to_fit();
         Ok(Self::from_vec(expressions))
     }
 
@@ -681,12 +693,6 @@ impl ExprStream {
         } else {
             Some(ExpressionInvalidReason::UnreferencedExprs { indices: unrefed })
         }
-    }
-
-    /// Converts `Self` into a vector of `Expression`s.
-    #[must_use]
-    pub fn to_vec(self) -> Vec<Expression> {
-        self.into_iter().collect::<Vec<_>>()
     }
 }
 

@@ -13,7 +13,7 @@ use crate::{
 fn eval_cal() {
     let expr = ExprStream::from_text_force(CALCULATION_EXAMPLE);
 
-    assert_eq!(eval_calculation(&expr).unwrap(), EXAMPLE_RESULT);
+    assert_eq!(expr.evaluate().unwrap(), EXAMPLE_RESULT);
 }
 
 #[test]
