@@ -196,8 +196,8 @@ impl TokenStream {
 
         let mut num_b = String::with_capacity(16);
         let mut bracket_count = 0;
+        let mut last_bracket_input = 0usize;
         let mut last_bracket = 0usize;
-        let mut prev_infix = false;
 
         macro_rules! parse_b {
             () => {
@@ -217,7 +217,7 @@ impl TokenStream {
                 if bracket_count == 0 {
                     return Err(TokenParseError::HangingBracket);
                 }
-                if last_bracket + 1 == i {
+                if last_bracket_input + 1 == i {
                     return Err(TokenParseError::EmptyBracket { at: i });
                 }
                 parse_b!();
@@ -227,29 +227,41 @@ impl TokenStream {
 
             if c == '(' {
                 parse_b!();
-                prev_infix = true;
                 bracket_count += 1;
-                last_bracket = i;
+                last_bracket_input = i;
+                last_bracket = r.len();
                 mul_start_bracket_handle(&mut r, bracket_count);
                 continue;
             }
 
             // operators and numbers
             if let Some(infix) = InfixOperator::get_operator_from_sign(c)
-                && !prev_infix
                 && i != 0
             {
-                prev_infix = true;
                 parse_b!();
                 r.push(token_infix!(bracket_count, infix));
                 continue;
             } else if let Some(unary) = UnaryOperator::get_operator_from_sign(c) {
-                prev_infix = false;
-                r.push(token_unary!(bracket_count, unary));
-                parse_b!();
+                match unary.unary_type() {
+                    UnaryType::Prefix => {
+                        r.push(token_unary!(bracket_count, unary));
+                        parse_b!();
+                    }
+                    UnaryType::Suffix => {
+                        if let Some(last) = r.last()
+                            && last.bracket_count > bracket_count
+                        {
+                            // In cases of (..)!
+                            r.insert(last_bracket, token_unary!(bracket_count, unary));
+                        } else {
+                            // In cases of x!
+                            r.push(token_unary!(bracket_count, unary));
+                        }
+                        parse_b!();
+                    }
+                }
                 continue;
             }
-            prev_infix = false;
 
             if c.is_numeric() || c == '.' {
                 num_b.push(c);

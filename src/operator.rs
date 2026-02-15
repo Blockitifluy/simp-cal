@@ -36,27 +36,26 @@ where
     fn get_binding_power(&self) -> BindPower;
 }
 
-// #[allow(dead_code, reason = "used in unimplemented factoral operator")]
-// fn factoral(num: f32) -> f32 {
-//     if num < 1.0 {
-//         return 0.0;
-//     } else if (num - 1.0).abs() < f32::EPSILON {
-//         return 1.0;
-//     }
-//
-//     #[allow(clippy::cast_precision_loss)]
-//     #[allow(clippy::cast_possible_truncation)]
-//     let round_num = num as i32;
-//
-//     let mut f = 1;
-//     for i in 1..=round_num {
-//         f *= i;
-//     }
-//
-//     #[allow(clippy::cast_precision_loss)]
-//     let r = f as f32;
-//     r
-// }
+fn factoral(num: f32) -> f32 {
+    if num < 1.0 {
+        return 0.0;
+    } else if (num - 1.0).abs() < f32::EPSILON {
+        return 1.0;
+    }
+
+    #[allow(clippy::cast_precision_loss)]
+    #[allow(clippy::cast_possible_truncation)]
+    let round_num = num as i32;
+
+    let mut f = 1;
+    for i in 1..=round_num {
+        f *= i;
+    }
+
+    #[allow(clippy::cast_precision_loss)]
+    let r = f as f32;
+    r
+}
 
 /// Describes an operant position relative to an `Operator`
 #[derive(Debug)]
@@ -117,7 +116,7 @@ impl UnaryOperator {
             #[allow(clippy::cast_sign_loss)]
             #[allow(clippy::cast_precision_loss)]
             Self::BitNot => !(operant as u32) as f32,
-            Self::Factorial => unimplemented!(), // factoral(operant),
+            Self::Factorial => factoral(operant),
         }
     }
 
@@ -125,10 +124,10 @@ impl UnaryOperator {
     /// # Returns
     /// `UnaryType`
     #[must_use]
-    pub fn unary_type(&self) -> UnaryType {
+    pub const fn unary_type(&self) -> UnaryType {
         match self {
             Self::Neg | Self::BitNot => UnaryType::Prefix,
-            Self::Factorial => unimplemented!(), //UnaryType::Suffix,
+            Self::Factorial => UnaryType::Suffix,
         }
     }
 
@@ -141,7 +140,7 @@ impl UnaryOperator {
     pub fn get_operators_of_unary_type(unary_type: &UnaryType) -> Vec<Self> {
         match unary_type {
             UnaryType::Prefix => vec![Self::Neg, Self::BitNot],
-            UnaryType::Suffix => unimplemented!(), // vec![Self::Factorial],
+            UnaryType::Suffix => vec![Self::Factorial],
         }
     }
 }
@@ -151,7 +150,7 @@ impl OperatorTrait for UnaryOperator {
         match sign {
             '-' => Some(Self::Neg),
             '~' => Some(Self::BitNot),
-            '!' => unimplemented!(), // Some(Self::Factorial),
+            '!' => Some(Self::Factorial),
             _ => None,
         }
     }
@@ -160,14 +159,14 @@ impl OperatorTrait for UnaryOperator {
         match self {
             Self::Neg => "-",
             Self::BitNot => "~",
-            Self::Factorial => unimplemented!(), // "!",
+            Self::Factorial => "!",
         }
     }
 
     fn get_binding_power(&self) -> BindPower {
         match self {
             Self::Neg | Self::BitNot => 10,
-            Self::Factorial => unimplemented!(), // 9,
+            Self::Factorial => 9,
         }
     }
 }

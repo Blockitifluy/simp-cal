@@ -143,7 +143,7 @@ impl fmt::Display for Expression {
 
                 match unary.unary_type() {
                     UnaryType::Prefix => write!(f, "{unary}{operant}"),
-                    UnaryType::Suffix => unimplemented!(), // write!(f, "{operant}{unary}"),
+                    UnaryType::Suffix => write!(f, "{operant}{unary}"),
                 }
             }
             ExpressionType::UnaryOp { operant } => {
@@ -156,7 +156,7 @@ impl fmt::Display for Expression {
 
                 match unary.unary_type() {
                     UnaryType::Prefix => write!(f, "{unary}expr({operant})"),
-                    UnaryType::Suffix => unimplemented!(), // write!(f, "expr({operant}){unary}"),
+                    UnaryType::Suffix => write!(f, "expr({operant}){unary}"),
                 }
             }
         }
@@ -209,6 +209,26 @@ pub enum ExpressionType {
     },
 }
 impl ExpressionType {
+    /// Is `Self` any type of _whole_. Including:
+    /// - `Whole`,
+    /// - `UnaryWhole`
+    /// # Returns
+    /// `true` if `Self` is any type of _whole_.
+    #[must_use]
+    pub const fn is_whole(&self) -> bool {
+        matches!(self, Self::Whole { .. }) || matches!(self, Self::UnaryWhole { .. })
+    }
+
+    /// Is `Self` not any type of _whole_. Including:
+    /// - `Right`,
+    /// - `UnaryOp`
+    /// # Returns
+    /// `true` if `Self` is not any type of _whole_.
+    #[must_use]
+    pub const fn is_partial(&self) -> bool {
+        !self.is_whole()
+    }
+
     /// Returns `true`, if `Self` is any type of unary expression.
     #[must_use]
     pub const fn is_unary(&self) -> bool {
@@ -616,7 +636,7 @@ impl ExprStream {
         // first, the first token has to be the Whole type
         let first = self.first()?;
 
-        if !matches!(first.expr_type, ExpressionType::Whole { .. }) {
+        if first.expr_type.is_whole() {
             return Some(ExpressionInvalidReason::FirstExprNotWhole);
         }
 
