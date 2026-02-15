@@ -133,4 +133,12 @@ fn token_reconstruct() {
         TokenStream::from_vec(EXAMPLE_TOKENS.to_vec()).as_text(true),
         CALCULATION_SPACING_EXAMPLE
     );
+    assert_eq!(
+        TokenStream::from_text_force("10!+(2*2)!").as_text(false),
+        "10!+(2*2)!"
+    );
+    assert_eq!(
+        TokenStream::from_text_force("10!+(2!*2)").as_text(false),
+        "10!+(2!*2)"
+    );
 }

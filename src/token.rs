@@ -14,7 +14,7 @@ use crate::{
 };
 
 /// Creates a new `InfixOperator` token.
-/// # Arguements
+/// # Arguments
 /// - `$bracket_count` - the amount of brackets wrapped around the token
 /// - `$oper` - the infix operator assigned to the token.
 #[macro_export]
@@ -28,9 +28,9 @@ macro_rules! token_infix {
 }
 
 /// Creates a new `UnaryOperator` token.
-/// # Arguements
+/// # Arguments
 /// - `$bracket_count` - the amount of brackets wrapped around the token
-/// - `$oper` - the unary operator assigined to the token
+/// - `$oper` - the unary operator assigned to the token
 #[macro_export]
 macro_rules! token_unary {
     ($bracket_count:expr, $oper:expr) => {
@@ -42,9 +42,9 @@ macro_rules! token_unary {
 }
 
 /// Creates a new `Number` token.
-/// # Arguements
+/// # Arguments
 /// - `$bracket_count` - the amount of brackets wrapped around the token
-/// - `$num` - The num assigned to the token.
+/// - `$num` - The number assigned to the token.
 #[macro_export]
 macro_rules! token_number {
     ($bracket_count:expr, $num:expr) => {
@@ -73,7 +73,7 @@ pub struct Token {
 }
 impl Token {
     /// Creates a new token.
-    /// # Arguements
+    /// # Arguments
     /// - `bracket_count`: the amount of brackets wrapped around the token
     /// - `token_type`: the type of Token
     #[must_use]
@@ -96,7 +96,7 @@ impl fmt::Display for Token {
 /// - 10.2 is represented as a `Number(10.2)`
 /// - `+` is represented as a `Operator(Operator::Add)`
 /// # Note
-/// Unary operators are always behind their operants
+/// Unary operators are always behind their operands
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum TokenType {
     /// A single number
@@ -180,10 +180,10 @@ pub struct TokenStream {
 }
 impl TokenStream {
     /// Parses the tokens of a calculation.
-    /// # Arguements
+    /// # Arguments
     /// - `cal`: calculation string
     /// # Errors
-    /// - `NumberParse`: Operant wasn't a valid number.
+    /// - `NumberParse`: Operand wasn't a valid number.
     /// - `HangingBracket`: Calculation has a bracket that hasn't been closed or opened.
     /// - `InvalidCharacter`: An invalid character or a character used in the wrong context.
     /// - `EmptyBracket`: A bracket has no characters inside that could be parsed
@@ -198,6 +198,7 @@ impl TokenStream {
         let mut bracket_count = 0;
         let mut last_bracket_input = 0usize;
         let mut last_bracket = 0usize;
+        let mut prev_infix = false;
 
         macro_rules! parse_b {
             () => {
@@ -227,6 +228,7 @@ impl TokenStream {
 
             if c == '(' {
                 parse_b!();
+                prev_infix = true;
                 bracket_count += 1;
                 last_bracket_input = i;
                 last_bracket = r.len();
@@ -236,12 +238,15 @@ impl TokenStream {
 
             // operators and numbers
             if let Some(infix) = InfixOperator::get_operator_from_sign(c)
+                && !prev_infix
                 && i != 0
             {
+                prev_infix = true;
                 parse_b!();
                 r.push(token_infix!(bracket_count, infix));
                 continue;
             } else if let Some(unary) = UnaryOperator::get_operator_from_sign(c) {
+                prev_infix = false;
                 match unary.unary_type() {
                     UnaryType::Prefix => {
                         r.push(token_unary!(bracket_count, unary));
@@ -262,6 +267,7 @@ impl TokenStream {
                 }
                 continue;
             }
+            prev_infix = false;
 
             if c.is_numeric() || c == '.' {
                 num_b.push(c);
@@ -281,7 +287,7 @@ impl TokenStream {
     }
 
     /// Parses text to construct a `TokenStream`.
-    /// # Arguements
+    /// # Arguments
     /// - `cal`: the calculation parsed
     /// # Panics
     /// Encountering an error
@@ -293,7 +299,7 @@ impl TokenStream {
     }
 
     /// Constructs a new `TokenStream` from a vector of `Token`s.
-    /// # Arguements
+    /// # Arguments
     /// - `tokens`: the vector
     /// # Returns
     /// `Self`
@@ -310,22 +316,20 @@ impl TokenStream {
         get_operator_in_tokens(&self.tokens)
     }
 
-    /// Evalulates the value of `Self`.
+    /// Evaluates the value of `Self`.
     /// # Errors
     /// See [`ExpressionParsingError`] and [`crate::eval::EvalCalculationErr`]
     /// # Returns
     /// A number that `TokenStream` is equal to or an `EvalCalculationErr`
-    pub fn evalulate(&self) -> Result<f32, Box<dyn Error>> {
-        let r = self.as_expressions()?.evalulate()?;
-
-        Ok(r)
+    pub fn evaluate(&self) -> Result<f32, Box<dyn Error>> {
+        Ok(self.as_expressions()?.evaluate()?)
     }
 
     /// Checks if a token slice is valid, this means it can be parsed into tokens and calculated without error.
-    /// # Arguements
+    /// # Arguments
     /// - `token`: a slice of tokens
     /// # Returns
-    /// `None`, if the slice vaild, otherwise returns the reason why it is invalid.
+    /// `None`, if the slice valid, otherwise returns the reason why it is invalid.
     #[must_use]
     pub fn is_valid(&self) -> Option<TokenInvalidReason> {
         // Should start with a number or unary value
@@ -352,7 +356,7 @@ impl TokenStream {
             let (other, current) = (tok_window[0], tok_window[1]);
 
             let err = match current.token_type {
-                // Two numbers next to eachother
+                // Two numbers next to another
                 TokenType::Number(_) => {
                     if other.token_type.is_operator() {
                         None
@@ -360,7 +364,7 @@ impl TokenStream {
                         Some(TokenInvalidReason::NumberPrevInvalid)
                     }
                 }
-                // Two infix next to eachother
+                // Two infix next to another
                 TokenType::Infix(_) => {
                     if other.token_type.is_number() || other.token_type.is_unary() {
                         None
@@ -383,7 +387,7 @@ impl TokenStream {
             }
         }
 
-        // Operator's bracket_count should be lower equal than it's operants
+        // Operator's bracket_count should be lower equal than it's operands
         for (i, tok) in self.iter().enumerate() {
             match tok.token_type {
                 TokenType::Infix(_) => {
@@ -426,7 +430,7 @@ impl TokenStream {
         ExprStream::from_token_stream(self)
     }
 
-    /// Creates an `ExprStream` from `Self`, panicing when it encounters an error.
+    /// Creates an `ExprStream` from `Self`, panicking when it encounters an error.
     /// # Panics
     /// Encountering an error
     /// # Returns
@@ -442,8 +446,8 @@ impl TokenStream {
         self.into_iter().collect::<Vec<_>>()
     }
 
-    /// Reconstructs or unparses tokens into it's `String` form.
-    /// # Arguements
+    /// Deconstructs tokens into it's `String` form.
+    /// # Arguments
     /// - `tokens`: the tokens to be reconstructed
     /// - `include_spacing`: include whitespace between operators
     /// # Returns
@@ -462,9 +466,10 @@ impl TokenStream {
     pub fn as_text(&self, include_spacing: bool) -> String {
         let mut b = String::with_capacity(16);
         let mut last_bracket_count = 0;
-        // let mut suffix_to_push: Option<String> = None;
+        let mut suffix_to_push: Option<String> = None;
+        let mut suffix_bracket = false;
 
-        for t in &self.tokens {
+        for (i, t) in self.tokens.iter().enumerate() {
             let is_start_bracket = t.bracket_count > last_bracket_count;
             let bracket_diff = if is_start_bracket {
                 t.bracket_count - last_bracket_count
@@ -478,15 +483,23 @@ impl TokenStream {
             } else if !is_start_bracket && bracket_diff != 0 {
                 // bracket )
                 b.push_str(&")".repeat(bracket_diff as usize));
+                if let Some(suffix) = &suffix_to_push
+                    && suffix_bracket
+                {
+                    b.push_str(suffix);
+                    suffix_to_push = None;
+                }
             }
 
             match t.token_type {
                 TokenType::Number(num) => {
                     b.push_str(&num.to_string());
-                    // if let Some(_suffix) = suffix_to_push {
-                    //     b.push_str(&suffix);
-                    //     suffix_to_push = None;
-                    // }
+                    if let Some(suffix) = &suffix_to_push
+                        && suffix_bracket
+                    {
+                        b.push_str(suffix);
+                        suffix_to_push = None;
+                    }
                 }
                 TokenType::Infix(op) => {
                     if include_spacing {
@@ -495,17 +508,29 @@ impl TokenStream {
                         b.push_str(op.as_sign());
                     }
                 }
-                TokenType::Unary(op) => {
-                    if op.unary_type() == UnaryType::Prefix {
-                        b.push_str(op.as_sign());
-                    } else {
-                        // suffix_to_push = Some(op.as_sign().to_owned());
-                        unimplemented!();
+                TokenType::Unary(op) => match op.unary_type() {
+                    UnaryType::Prefix => b.push_str(op.as_sign()),
+                    UnaryType::Suffix => {
+                        if let Some(next) = self.tokens.get(i + 1)
+                            && next.bracket_count > t.bracket_count
+                        {
+                            suffix_bracket = false;
+                        } else {
+                            suffix_bracket = true;
+                        }
+                        suffix_to_push = Some(op.as_sign().to_owned());
                     }
-                }
+                },
             }
 
             last_bracket_count = t.bracket_count;
+        }
+
+        if last_bracket_count > 0 {
+            b.push_str(&")".repeat(last_bracket_count as usize));
+            if let Some(suffix) = &suffix_to_push {
+                b.push_str(suffix);
+            }
         }
 
         b.shrink_to_fit();
@@ -598,17 +623,17 @@ impl Error for TokenParseError {}
 /// A reason why an `TokenStream` isn't valid.
 #[derive(Debug)]
 pub enum TokenInvalidReason {
-    /// Neighbour is not `Operator`
+    /// Neighbor is not `Operator`
     NumberPrevInvalid,
-    /// Neighbour is not an `Unary` or `Number`
+    /// Neighbor is not an `Unary` or `Number`
     InfixPrevInvalid,
-    /// Neighbour is not an `Infix`
+    /// Neighbor is not an `Infix`
     UnaryPrevInvalid,
     /// The first Token isn't a `Unary` or `Number`
     InvalidStart,
     /// The last Token isn't a `Number`
     InvalidEnd,
-    /// Operator has a higher bracket level than it's operants
+    /// Operator has a higher bracket level than it's operands
     OperatorHigherBracketLevel {
         /// The index of the error
         at: usize,
@@ -629,7 +654,7 @@ impl fmt::Display for TokenInvalidReason {
             Self::UnaryPrevInvalid => write!(f, "prev of unary should be infix"),
             Self::OperatorHigherBracketLevel { at } => write!(
                 f,
-                "operator has a higher bracket level than operants (at: {at})"
+                "operator has a higher bracket level than operands (at: {at})"
             ),
         }
     }

@@ -1,4 +1,4 @@
-//! Parses calculations into expressions that could be evalulated
+//! Parses calculations into expressions that could be evaluated
 
 #![warn(missing_docs)]
 #![warn(clippy::explicit_into_iter_loop)]

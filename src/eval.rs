@@ -3,7 +3,7 @@ use std::{error::Error, fmt};
 
 use crate::{
     expression::{Expression, ExpressionType},
-    operator::{InfixOperator, OperantPosition, Operator, UnaryOperator},
+    operator::{InfixOperator, OperandPosition, Operator, UnaryOperator},
 };
 
 macro_rules! expr_err {
@@ -24,22 +24,22 @@ fn get_operants_operator_of_expr(
         ExpressionType::Whole { left, right } => Ok((left, right)),
         ExpressionType::Left { left, right } => {
             let Some(r_val) = results.get(right) else {
-                expr_err!(right, OperantPosition::Right, *expr)
+                expr_err!(right, OperandPosition::Right, *expr)
             };
             Ok((left, *r_val))
         }
         ExpressionType::Right { left, right } => {
             let Some(l_val) = results.get(left) else {
-                expr_err!(left, OperantPosition::Left, *expr)
+                expr_err!(left, OperandPosition::Left, *expr)
             };
             Ok((*l_val, right))
         }
         ExpressionType::Op { left, right } => {
             let Some(l_val) = results.get(left) else {
-                expr_err!(left, OperantPosition::Left, *expr)
+                expr_err!(left, OperandPosition::Left, *expr)
             };
             let Some(r_val) = results.get(right) else {
-                expr_err!(right, OperantPosition::Right, *expr)
+                expr_err!(right, OperandPosition::Right, *expr)
             };
             Ok((*l_val, *r_val))
         }
@@ -63,10 +63,10 @@ fn eval_unary(
     results: &[f32],
 ) -> Result<f32, EvalCalculationErr> {
     match expr.expr_type {
-        ExpressionType::UnaryWhole { operant } => Ok(op.compute(operant)),
-        ExpressionType::UnaryOp { operant } => {
-            let Some(num) = results.get(operant) else {
-                expr_err!(operant, OperantPosition::Unary, *expr)
+        ExpressionType::UnaryWhole { operand } => Ok(op.compute(operand)),
+        ExpressionType::UnaryOp { operand } => {
+            let Some(num) = results.get(operand) else {
+                expr_err!(operand, OperandPosition::Unary, *expr)
             };
             Ok(op.compute(*num))
         }
@@ -74,12 +74,12 @@ fn eval_unary(
     }
 }
 
-/// Evalulates a slice of `Expression`s to a `f32` number.
-/// # Arguements
+/// Evaluates a slice of `Expression`s to a `f32` number.
+/// # Arguments
 /// - `exprs`: A slice of `Expression`s
 /// # Errors
-/// - `UnorderedExpressions`: Caused when the function tries to evalulate an `Expression`, linking to
-///   another that hasn't been evalulate yet. Check if you are sorting the `Expression`s in accorance with BODMAS.
+/// - `UnorderedExpressions`: Caused when the function tries to evaluate an `Expression`, linking to
+///   another that hasn't been evaluate yet. Check if you are sorting the `Expression`s in accordance with the order of operators.
 /// # Returns
 /// The calculated number
 pub fn eval_calculation(exprs: &[Expression]) -> Result<f32, EvalCalculationErr> {
@@ -97,18 +97,18 @@ pub fn eval_calculation(exprs: &[Expression]) -> Result<f32, EvalCalculationErr>
     Ok(*eval)
 }
 
-/// Used for errors about evalulating a calculation.
+/// Used for errors about evaluating a calculation.
 #[derive(Debug)]
 pub enum EvalCalculationErr {
     /// Raised when an expression (of the type `Op`, `Left`, `Right`) can't get the value of the
-    /// linked expression, because it hasn't been evalulated yet.
+    /// linked expression, because it hasn't been evaluated yet.
     ///
-    /// This is normally caused by the expressions not being sorted or binded correctly.
+    /// This is normally caused by the expressions not being sorted or bound correctly.
     UnorderedExpressions {
         /// The index of the linked expression
         index: usize,
         /// The position of the `Operant` relative to an operator
-        position: OperantPosition,
+        position: OperandPosition,
         /// The expression raising the error
         expr: Expression,
     },

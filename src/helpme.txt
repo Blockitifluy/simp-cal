@@ -1,10 +1,10 @@
-Calcualates an equation and then evalulates it into a single number.
+Calculates an equation and then evaluates it into a single number.
 This program follows the rules of order of operations and bracket support.
 
 Usage: simp-cal [equations] [options]
 
-Arguements:
-  [equations] ... A list of equations to evalulate
+Arguments:
+  [equations] ... A list of equations to evaluate
 
 Options:
   -v, --version
@@ -14,8 +14,8 @@ Options:
   -V, --verbose
     Shows the workings of this program
       --no-eval
-    Doesn't evalulate the equations, if the `--verbose` option isn't choosen
+    Doesn't evaluate the equations, if the `--verbose` option isn't chosen
     then just prints out the expressions in the calculations.
 
 Example:
-  1.5 * (2 + 2) would evalulate to 6.
+  1.5 * (2 + 2) would evaluate to 6.

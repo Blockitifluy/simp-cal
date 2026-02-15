@@ -2,7 +2,7 @@
 
 _Simple Calculate_
 
-This project parses a calculation into expressions, and then evalulates it.
+This project parses a calculation into expressions, and then evaluates it.
 
 - Probably fast,
 - Maybe efficient,
@@ -12,9 +12,9 @@ This project parses a calculation into expressions, and then evalulates it.
 
 - [x] tokenization
 - [x] expression parsing
-- [x] evalulation
+- [x] evaluation
 - [x] brackets
-- [ ] negative numbers
+- [x] negative numbers
 - [x] 100% test coverage
 - [ ] substitution
 - [ ] functions

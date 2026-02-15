@@ -2,8 +2,6 @@
 use crate::token::{BracketLevel, Token, TokenType};
 use std::fmt;
 
-// TODO: multiple size operators
-
 /// The type used to store an operator's binding power
 pub type BindPower = u8;
 
@@ -12,25 +10,25 @@ pub trait OperatorTrait
 where
     Self: fmt::Display,
 {
-    /// Gets the `Operator` correlating to a mathmatical symbol.
-    /// # Arguements
-    /// - `sign`: the mathmatical symbol
+    /// Gets the `Operator` correlating to a mathematical symbol.
+    /// # Arguments
+    /// - `sign`: the mathematical symbol
     /// # Returns
     /// An option to an `Operator`. Returns `None`, if the `sign` is invalid.
     fn get_operator_from_sign(sign: char) -> Option<Self>
     where
         Self: Sized;
 
-    /// Gets the mathmatical symbol correlating to the `Operator`.
+    /// Gets the mathematical symbol correlating to the `Operator`.
     /// # Returns
-    /// A mathmatical symbol
+    /// A mathematical symbol
     fn as_sign(&self) -> &str;
 
     /// Gets the binding power of an `Operator`.
     /// # Returns
     /// The binding power
     /// # Notes
-    /// The binding power is the priority, of which "grabs" a neighbouring operant. For example:
+    /// The binding power is the priority, of which "grabs" a neighboring operand. For example:
     /// `10+5*2`
     /// The '*' grabs the 5, because it has a higher binding power than '+'.
     fn get_binding_power(&self) -> BindPower;
@@ -57,10 +55,10 @@ fn factoral(num: f32) -> f32 {
     r
 }
 
-/// Describes an operant position relative to an `Operator`
+/// Describes an operand position relative to an `Operator`
 #[derive(Debug)]
 #[repr(u8)]
-pub enum OperantPosition {
+pub enum OperandPosition {
     /// To the left: _x_ + y
     Left,
     /// To the right: x + _y_
@@ -69,7 +67,7 @@ pub enum OperantPosition {
     Unary,
 }
 
-impl fmt::Display for OperantPosition {
+impl fmt::Display for OperandPosition {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Left => write!(f, "left"),
@@ -83,9 +81,9 @@ impl fmt::Display for OperantPosition {
 #[repr(u8)]
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum UnaryType {
-    /// After the operant
+    /// After the operand
     Suffix,
-    /// Before the operant
+    /// Before the operand
     Prefix,
 }
 
@@ -101,22 +99,22 @@ pub enum UnaryOperator {
 }
 
 impl UnaryOperator {
-    /// Computes two operants for an `Operator`.
-    /// # Arguements
-    /// - `left`: left operant
-    /// - `right`: right operant
+    /// Computes two operands for an `Operator`.
+    /// # Arguments
+    /// - `left`: left operand
+    /// - `right`: right operand
     /// # Returns
     /// The computed result
     #[must_use]
-    pub fn compute(&self, operant: f32) -> f32 {
+    pub fn compute(&self, operand: f32) -> f32 {
         match self {
-            Self::Neg => -operant,
+            Self::Neg => -operand,
             // God damn
             #[allow(clippy::cast_possible_truncation)]
             #[allow(clippy::cast_sign_loss)]
             #[allow(clippy::cast_precision_loss)]
-            Self::BitNot => !(operant as u32) as f32,
-            Self::Factorial => factoral(operant),
+            Self::BitNot => !(operand as u32) as f32,
+            Self::Factorial => factoral(operand),
         }
     }
 
@@ -132,7 +130,7 @@ impl UnaryOperator {
     }
 
     /// Gets all `UnaryOperator`s that are either the type of `Suffix` or `Prefix`.
-    /// # Arguements
+    /// # Arguments
     /// - `unary_type`: the unary type to be searched
     /// # Returns
     /// A vec of `UnaryOperator`s.
@@ -182,7 +180,7 @@ impl fmt::Display for UnaryOperator {
 pub enum InfixOperator {
     /// Add '+'
     Add,
-    /// Substract '-'
+    /// Subtract '-'
     Sub,
     /// Multiply '*'
     Mul,
@@ -192,10 +190,10 @@ pub enum InfixOperator {
     Pow,
 }
 impl InfixOperator {
-    /// Computes two operants for an `Operator`.
-    /// # Arguements
-    /// - `left`: left operant
-    /// - `right`: right operant
+    /// Computes two operands for an `Operator`.
+    /// # Arguments
+    /// - `left`: left operand
+    /// - `right`: right operand
     /// # Returns
     /// The computed result
     #[must_use]
@@ -252,7 +250,7 @@ impl fmt::Display for InfixOperator {
 pub enum Operator {
     /// An infix operator (e.g. 1 + 1)
     Infix(InfixOperator),
-    /// An unary operator (e.g. 1! or -1), that could be either suffix or prefix.
+    /// An unary operator (e.g. _1!_ or _-1_), that could be either suffix or prefix.
     Unary(UnaryOperator),
 }
 impl Operator {
@@ -290,7 +288,7 @@ pub struct ProcessedOperator {
 }
 impl ProcessedOperator {
     /// Creates a new `ProcessedOperator`.
-    /// # Arguements
+    /// # Arguments
     /// - `bracket_count`: the amount of brackets wrapped around the `ProcessedOperator`
     /// - `operator`: an infix operator
     /// - `index`: the index of the `ProcessedOperator` inside the original collection of tokens.
@@ -310,7 +308,7 @@ impl ProcessedOperator {
     }
 
     /// Creates a new `ProcessedOperator`.
-    /// # Arguements
+    /// # Arguments
     /// - `bracket_count`: the amount of brackets wrapped around the `ProcessedOperator`
     /// - `operator`: an unary operator
     /// - `index`: the index of the `ProcessedOperator` inside the original collection of tokens.
@@ -330,7 +328,7 @@ impl ProcessedOperator {
     }
 
     /// Creates a new `ProcessedOperator`.
-    /// # Arguements
+    /// # Arguments
     /// - `bracket_count`: the amount of brackets wrapped around the `ProcessedOperator`
     /// - `operator`: an unary operator
     /// - `index`: the index of the `ProcessedOperator` inside the original collection of tokens.
@@ -374,10 +372,10 @@ impl Ord for ProcessedOperator {
 }
 
 /// Gets all the operators in a token slice.
-/// # Arguements
+/// # Arguments
 /// - `tokens`: a slice of tokens
 /// # Returns
-/// A vec of the index of the operators and operator.
+/// A vector of the index of the operators and operator.
 #[must_use]
 pub fn get_operator_in_tokens(tokens: &[Token]) -> Vec<ProcessedOperator> {
     tokens

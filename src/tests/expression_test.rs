@@ -62,7 +62,7 @@ fn pythagoras_expression() {
 
 #[test]
 #[should_panic]
-fn operant_not_number_next() {
+fn operand_not_number_next() {
     let tokens = [
         token_number!(1.0),
         token_infix!(InfixOperator::Sub),
@@ -76,7 +76,7 @@ fn operant_not_number_next() {
 
 #[test]
 #[should_panic]
-fn operant_not_number_prev() {
+fn operand_not_number_prev() {
     let tokens = [
         token_number!(1.0),
         token_infix!(InfixOperator::Sub),
@@ -120,14 +120,14 @@ fn expression_display() {
         "{}",
         Expression::new(
             Operator::Infix(InfixOperator::Add),
-            ExpressionType::UnaryWhole { operant: 1.0 }
+            ExpressionType::UnaryWhole { operand: 1.0 }
         )
     );
     println!(
         "{}",
         Expression::new(
             Operator::Infix(InfixOperator::Add),
-            ExpressionType::UnaryOp { operant: 1 }
+            ExpressionType::UnaryOp { operand: 1 }
         )
     );
 }
@@ -136,22 +136,22 @@ fn expression_display() {
 fn expression_err_display() {
     println!(
         "{}",
-        ExpressionParsingError::OperantNotNumber {
-            position: OperantPosition::Right,
+        ExpressionParsingError::OperandNotNumber {
+            position: OperandPosition::Right,
             token: token_infix!(InfixOperator::Add)
         }
     );
     println!(
         "{}",
-        ExpressionParsingError::OperantNotNumber {
-            position: OperantPosition::Unary,
+        ExpressionParsingError::OperandNotNumber {
+            position: OperandPosition::Unary,
             token: token_infix!(InfixOperator::Add)
         }
     );
     println!(
         "{}",
-        ExpressionParsingError::OperantNotNumber {
-            position: OperantPosition::Left,
+        ExpressionParsingError::OperandNotNumber {
+            position: OperandPosition::Left,
             token: token_infix!(InfixOperator::Add)
         }
     );
@@ -171,8 +171,8 @@ fn expression_intersects_bind() {
 
 #[test]
 fn is_unary() {
-    assert!(ExpressionType::UnaryWhole { operant: 1.0 }.is_unary());
-    assert!(ExpressionType::UnaryOp { operant: 1 }.is_unary());
+    assert!(ExpressionType::UnaryWhole { operand: 1.0 }.is_unary());
+    assert!(ExpressionType::UnaryOp { operand: 1 }.is_unary());
 
     assert!(
         ExpressionType::Whole {
