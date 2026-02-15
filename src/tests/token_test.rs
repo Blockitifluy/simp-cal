@@ -1,6 +1,6 @@
 #![allow(clippy::perf)]
-#![allow(clippy::should_panic_without_expect)]
 #![allow(clippy::pedantic)]
+
 use crate::{
     operator::{InfixOperator, UnaryOperator},
     token::*,

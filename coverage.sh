@@ -1,3 +1,3 @@
 #!/bin/bash
 
-cargo tarpaulin --out Html --exclude-files src/main.rs && open tarpaulin-report.html
+cargo tarpaulin --out Html && open tarpaulin-report.html

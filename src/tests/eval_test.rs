@@ -1,6 +1,6 @@
 #![allow(clippy::perf)]
 #![allow(clippy::pedantic)]
-#![allow(clippy::should_panic_without_expect)]
+
 use crate::{
     eval::{self, eval_calculation},
     expr_left, expr_op, expr_right, expr_unary_op, expr_whole,

@@ -1,4 +1,2 @@
-/target
+target
 tarpaulin-report.html
-flamegraph.svg
-perf.data*

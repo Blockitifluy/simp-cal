@@ -1,6 +1,6 @@
 #![allow(clippy::perf)]
 #![allow(clippy::pedantic)]
-#![allow(clippy::should_panic_without_expect)]
+
 use crate::operator::*;
 
 use super::examples::*;
