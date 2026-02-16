@@ -394,16 +394,16 @@ fn expr_infix(
     taken_tokens: &[ExprBind],
 ) -> Result<Expression, ExpressionParsingError> {
     let place = &proc_oper.index;
-    let Some(prev_token) = tokens.get(place - 1) else {
+    let Some(prev_token) = tokens.get(place.wrapping_sub(1)) else {
         return Err(ExpressionParsingError::NoNeighbouringOperands {
             position: OperandPosition::Left,
-            place: place - 1,
+            place: *place,
         });
     };
     let Some(next_token) = tokens.get(place + 1) else {
         return Err(ExpressionParsingError::NoNeighbouringOperands {
             position: OperandPosition::Right,
-            place: place + 1,
+            place: *place,
         });
     };
 
@@ -446,7 +446,7 @@ fn expr_unary(
     let Some(next_tok) = tokens.get(place + 1) else {
         return Err(ExpressionParsingError::NoNeighbouringOperands {
             position: OperandPosition::Unary,
-            place: *place + 1,
+            place: *place,
         });
     };
 
@@ -767,7 +767,7 @@ impl fmt::Display for ExpressionInvalidReason {
 /// Errors relating to expression parsing.
 /// # Used in
 /// - `tree_tokens`
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum ExpressionParsingError {
     /// The operand is not a number.
     OperandNotNumber {

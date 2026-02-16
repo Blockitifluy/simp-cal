@@ -378,13 +378,10 @@ impl TokenStream {
         for (i, tok) in self.iter().enumerate() {
             match tok.token_type {
                 TokenType::Infix(_) => {
-                    let Some(prev) = self.get(i - 1) else {
-                        return Some(TokenInvalidReason::InfixPrevInvalid);
-                    };
-
-                    let Some(next) = self.get(i + 1) else {
-                        return Some(TokenInvalidReason::InfixPrevInvalid);
-                    };
+                    #[allow(clippy::missing_panics_doc)]
+                    let prev = self.get(i - 1).unwrap();
+                    #[allow(clippy::missing_panics_doc)]
+                    let next = self.get(i + 1).unwrap();
 
                     if prev.bracket_count < tok.bracket_count
                         || next.bracket_count < tok.bracket_count
@@ -393,10 +390,8 @@ impl TokenStream {
                     }
                 }
                 TokenType::Unary(_) => {
-                    let Some(next) = self.get(i + 1) else {
-                        return Some(TokenInvalidReason::InfixPrevInvalid);
-                    };
-
+                    #[allow(clippy::missing_panics_doc)]
+                    let next = self.get(i + 1).unwrap();
                     if next.bracket_count < tok.bracket_count {
                         return Some(TokenInvalidReason::OperatorHigherBracketLevel { at: i });
                     }
@@ -410,7 +405,7 @@ impl TokenStream {
 
     /// Creates an `ExprStream` from `Self`.
     /// # Errors
-    /// See [`tree_tokens`].
+    /// See [`ExprStream::from_token_stream`].
     /// # Returns
     /// `ExprStream`, or an `ExpressionParsingError`
     pub fn as_expressions(&self) -> Result<ExprStream, ExpressionParsingError> {
@@ -435,10 +430,12 @@ impl TokenStream {
     /// The reconstructed string
     /// # Examples
     /// ```
-    /// let tokens = vec![token_number!(0, 1.0), token_operator!(0, Operator::Add), token_number!(0, 2.0)];
+    /// use simp_cal::{token::*, operator::InfixOperator, token_number, token_infix};
     ///
-    /// assert_eq!(reconstruct_tokens(&tokens, false), "1+1")
-    /// assert_eq!(reconstruct_tokens(&tokens, true), "1 + 1")
+    /// let tokens = vec![token_number!(0, 1.0), token_infix!(0, InfixOperator::Add), token_number!(0, 2.0)];
+    ///
+    /// assert_eq!(TokenStream::from_vec(tokens.clone()).as_text(false), "1+2");
+    /// assert_eq!(TokenStream::from_vec(tokens).as_text(true), "1 + 2");
     /// ```
     /// # Note
     /// Can accept malformed tokens, and reconstruction doesn't match exactly with it's inputs e.g.
@@ -492,13 +489,7 @@ impl TokenStream {
                 TokenType::Unary(op) => match op.unary_type() {
                     UnaryType::Prefix => b.push_str(op.as_sign()),
                     UnaryType::Suffix => {
-                        if let Some(next) = self.tokens.get(i + 1)
-                            && next.bracket_count != t.bracket_count
-                        {
-                            suffix_on_number = false;
-                        } else {
-                            suffix_on_number = true;
-                        }
+                        suffix_on_number = !matches!(self.tokens.get(i + 1), Some(next) if next.bracket_count != t.bracket_count );
                         suffix_to_push = Some(op.as_sign().to_owned());
                     }
                 },

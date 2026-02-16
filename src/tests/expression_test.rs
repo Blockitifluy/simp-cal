@@ -8,11 +8,14 @@ use crate::{
         ExpressionType,
     },
     operator::*,
+    tests::examples::{EXAMPLE_EXPRESSIONS_DISPLAY, EXAMPLE_TOKENS},
     token::{Token, TokenStream, TokenType},
     token_infix, token_number, token_unary,
 };
 
 use super::examples::{CALCULATION_EXAMPLE, EXAMPLE_EXPRESSIONS};
+
+// Parsing
 
 #[test]
 fn expression_cal() {
@@ -61,48 +64,104 @@ fn pythagoras_expression() {
 }
 
 #[test]
-#[should_panic]
-fn operand_not_number_next() {
-    let tokens = [
-        token_number!(1.0),
-        token_infix!(InfixOperator::Sub),
-        token_number!(1, 1.0),
-        token_infix!(1, InfixOperator::Mul),
-        token_infix!(1, InfixOperator::Mul),
-    ];
-
-    let _ = ExprStream::from_token_vec_force(&tokens);
-}
-
-#[test]
-#[should_panic]
-fn operand_not_number_prev() {
-    let tokens = [
-        token_number!(1.0),
-        token_infix!(InfixOperator::Sub),
-        token_infix!(1, InfixOperator::Add),
-        token_infix!(1, InfixOperator::Pow),
-        token_number!(1, 1.0),
-    ];
-
-    let _ = ExprStream::from_token_vec_force(&tokens);
-}
-
-#[test]
-#[should_panic]
 fn expr_prev_infix_err() {
     let tokens = vec![token_infix!(InfixOperator::Add), token_number!(1.0)];
-    let _ = ExprStream::from_token_vec_force(&tokens);
+    assert_eq!(
+        ExprStream::from_token_vec(&tokens).unwrap_err(),
+        ExpressionParsingError::NoNeighbouringOperands {
+            position: OperandPosition::Left,
+            place: 0
+        }
+    );
 
     let tokens = vec![token_number!(1.0), token_infix!(InfixOperator::Add)];
-    let _ = ExprStream::from_token_vec_force(&tokens);
+    assert_eq!(
+        ExprStream::from_token_vec(&tokens).unwrap_err(),
+        ExpressionParsingError::NoNeighbouringOperands {
+            position: OperandPosition::Right,
+            place: 1
+        }
+    );
 }
 
 #[test]
-#[should_panic]
 fn expr_unary_no_neighbour() {
     let tokens = vec![token_unary!(UnaryOperator::Neg)];
-    let _ = ExprStream::from_token_vec_force(&tokens);
+    assert_eq!(
+        ExprStream::from_token_vec(&tokens).unwrap_err(),
+        ExpressionParsingError::NoNeighbouringOperands {
+            position: OperandPosition::Unary,
+            place: 0
+        }
+    );
+}
+
+#[test]
+fn expr_unary_operand_not_number_is_empty() {
+    let stream = TokenStream::from_vec(vec![
+        token_unary!(UnaryOperator::Neg),
+        token_infix!(InfixOperator::Add),
+    ])
+    .as_expressions();
+
+    assert_eq!(
+        stream.unwrap_err(),
+        ExpressionParsingError::OperandNotNumber {
+            position: OperandPosition::Unary,
+            token: token_infix!(InfixOperator::Add)
+        }
+    );
+}
+
+#[test]
+fn expr_unary_operand_not_number() {
+    let stream = TokenStream::from_vec(vec![
+        token_number!(1, 5.0),
+        token_infix!(1, InfixOperator::Sub),
+        token_number!(1, 2.0),
+        token_infix!(InfixOperator::Mul),
+        token_unary!(UnaryOperator::Neg),
+        token_infix!(InfixOperator::Add),
+    ])
+    .as_expressions();
+
+    assert_eq!(
+        stream.unwrap_err(),
+        ExpressionParsingError::OperandNotNumber {
+            position: OperandPosition::Unary,
+            token: token_infix!(InfixOperator::Add)
+        }
+    );
+}
+
+#[test]
+fn to_vec() {
+    let vec_expr = EXAMPLE_EXPRESSIONS.to_vec();
+
+    assert_eq!(ExprStream::from_vec(vec_expr.clone()).to_vec(), vec_expr)
+}
+
+#[test]
+fn force_token_vec() {
+    let _ = ExprStream::from_token_vec_force(&EXAMPLE_TOKENS);
+}
+
+// Display
+
+#[test]
+fn expr_stream_display() {
+    let stream = ExprStream::from_vec(EXAMPLE_EXPRESSIONS.to_vec());
+
+    assert_eq!(format!("{}", stream), EXAMPLE_EXPRESSIONS_DISPLAY);
+}
+
+#[test]
+fn expr_stream_iter() {
+    let stream = ExprStream::from_vec(EXAMPLE_EXPRESSIONS.to_vec());
+
+    for (i, expr) in stream.into_iter().enumerate() {
+        assert_eq!(expr, EXAMPLE_EXPRESSIONS[i]);
+    }
 }
 
 #[test]
@@ -114,6 +173,9 @@ fn expression_display() {
 
     println!("{}", expr_unary_whole!(UnaryOperator::Neg, 1.0));
     println!("{}", expr_unary_op!(UnaryOperator::Neg, 1));
+
+    println!("{}", expr_unary_whole!(UnaryOperator::Factorial, 1.0));
+    println!("{}", expr_unary_op!(UnaryOperator::Factorial, 1));
 
     // err
     println!(
@@ -155,18 +217,42 @@ fn expression_err_display() {
             token: token_infix!(InfixOperator::Add)
         }
     );
+
+    println!(
+        "{}",
+        ExpressionParsingError::NoNeighbouringOperands {
+            position: OperandPosition::Right,
+            place: 1
+        }
+    );
+    println!(
+        "{}",
+        ExpressionParsingError::NoNeighbouringOperands {
+            position: OperandPosition::Unary,
+            place: 1
+        }
+    );
+    println!(
+        "{}",
+        ExpressionParsingError::NoNeighbouringOperands {
+            position: OperandPosition::Left,
+            place: 1
+        }
+    );
 }
 
+// Expression Identification
+
 #[test]
-fn expression_intersects_bind() {
-    assert!(
-        !ExprBind::new(0, 0, 1).intersects_bind(&ExprBind::new(0, 2, 3)),
-        "not intersecting"
-    );
-    assert!(
-        ExprBind::new(0, 0, 5).intersects_bind(&ExprBind::new(0, 0, 3)),
-        "intersects"
-    );
+fn set_expr_in_stream() {
+    let expr_vec = EXAMPLE_EXPRESSIONS.to_vec();
+    let expr = expr_left!(InfixOperator::Mul, 1.0, 12);
+
+    let mut stream = ExprStream::from_vec(expr_vec);
+
+    stream[0] = expr;
+
+    assert_eq!(expr, stream[0])
 }
 
 #[test]
@@ -197,6 +283,8 @@ fn is_unary() {
     );
     assert!(ExpressionType::Op { left: 1, right: 2 }.is_infix());
 }
+
+// Valid
 
 #[test]
 fn valid_expr() {
@@ -263,4 +351,18 @@ fn valid_expression_display() {
         }
     );
     println!("{}", ExpressionInvalidReason::ReferenceError { index: 2 });
+}
+
+// Other
+
+#[test]
+fn expression_intersects_bind() {
+    assert!(
+        !ExprBind::new(0, 0, 1).intersects_bind(&ExprBind::new(0, 2, 3)),
+        "not intersecting"
+    );
+    assert!(
+        ExprBind::new(0, 0, 5).intersects_bind(&ExprBind::new(0, 0, 3)),
+        "intersects"
+    );
 }

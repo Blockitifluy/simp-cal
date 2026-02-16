@@ -61,3 +61,6 @@ pub const EXAMPLE_EXPRESSIONS: [Expression; 8] = [
     expr_right!(InfixOperator::Div, 4, 2.0),
     expr_op!(InfixOperator::Add, 5, 6),
 ];
+
+pub const EXAMPLE_EXPRESSIONS_DISPLAY: &str =
+    "1 ^ 2, -3, expr(0) * expr(1), 71.5 - 2, -expr(2), 2 * expr(3), expr(4) / 2, expr(5) + expr(6)";

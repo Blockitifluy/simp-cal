@@ -2,12 +2,38 @@
 #![allow(clippy::pedantic)]
 
 use crate::{
-    eval::{self, eval_calculation},
+    eval::{self, EvalCalculationErr},
     expr_left, expr_op, expr_right, expr_unary_op, expr_whole,
     expression::*,
     operator::*,
     tests::examples::{CALCULATION_EXAMPLE, EXAMPLE_RESULT},
 };
+
+// Factoral
+
+#[test]
+fn factoral() {
+    let stream = ExprStream::from_text_force("4!");
+    assert_eq!(stream.evaluate().unwrap(), 24.0);
+}
+
+#[test]
+fn factoral_one() {
+    let stream = ExprStream::from_text_force("1!");
+    assert_eq!(stream.evaluate().unwrap(), 1.0);
+}
+
+#[test]
+fn factoral_less_than_one() {
+    let stream = ExprStream::from_text_force("0!");
+    assert_eq!(stream.evaluate().unwrap(), 0.0);
+    let stream = ExprStream::from_text_force("0.5!");
+    assert_eq!(stream.evaluate().unwrap(), 0.0);
+    let stream = ExprStream::from_text_force("(-0.5)!");
+    assert_eq!(stream.evaluate().unwrap(), 0.0);
+}
+
+// Evaluation
 
 #[test]
 fn eval_cal() {
@@ -17,59 +43,64 @@ fn eval_cal() {
 }
 
 #[test]
-fn eval_cal_op() {
-    // Should equal 13.0
-    let expr = [
-        expr_whole!(InfixOperator::Mul, 2.0, 2.0),
-        expr_whole!(InfixOperator::Mul, 3.0, 3.0),
-        expr_op!(InfixOperator::Add, 0, 1),
-    ];
+fn unordered_expr() {
+    let expr = expr_left!(InfixOperator::Add, 2.0, 2);
+    assert_eq!(
+        ExprStream::from_vec(vec![expr]).evaluate().unwrap_err(),
+        EvalCalculationErr::UnorderedExpressions {
+            index: 2,
+            position: OperandPosition::Right,
+            expr: expr
+        }
+    );
 
-    assert_eq!(eval_calculation(&expr).unwrap(), 13.0);
-}
+    let expr = expr_right!(InfixOperator::Add, 2, 2.0);
+    assert_eq!(
+        ExprStream::from_vec(vec![expr]).evaluate().unwrap_err(),
+        EvalCalculationErr::UnorderedExpressions {
+            index: 2,
+            position: OperandPosition::Left,
+            expr: expr
+        }
+    );
 
-#[test]
-#[should_panic]
-fn unordered_expr_left() {
-    let expr = [expr_left!(InfixOperator::Add, 2.0, 2)];
-    eval_calculation(&expr).unwrap();
-}
-
-#[test]
-#[should_panic]
-fn unordered_expr_right() {
-    let expr = [expr_right!(InfixOperator::Add, 2, 2.0)];
-    eval_calculation(&expr).unwrap();
-}
-
-#[test]
-#[should_panic]
-fn unordered_expr_op_right() {
-    let expr = [
+    let stream = ExprStream::from_vec(vec![
         expr_whole!(InfixOperator::Mul, 2.0, 2.0),
         expr_whole!(InfixOperator::Add, 2.0, 2.0),
         expr_op!(InfixOperator::Add, 0, 3),
-    ];
+    ]);
+    assert_eq!(
+        stream.evaluate().unwrap_err(),
+        EvalCalculationErr::UnorderedExpressions {
+            index: 3,
+            position: OperandPosition::Right,
+            expr: expr_op!(InfixOperator::Add, 0, 3),
+        }
+    );
 
-    eval_calculation(&expr).unwrap();
-}
-
-#[test]
-#[should_panic]
-fn unordered_expr_op_left() {
-    let expr = [
+    let stream = ExprStream::from_vec(vec![
         expr_whole!(InfixOperator::Mul, 2.0, 2.0),
         expr_whole!(InfixOperator::Add, 2.0, 2.0),
         expr_op!(InfixOperator::Add, 5, 1),
-    ];
-    eval_calculation(&expr).unwrap();
-}
+    ]);
+    assert_eq!(
+        stream.evaluate().unwrap_err(),
+        EvalCalculationErr::UnorderedExpressions {
+            index: 5,
+            position: OperandPosition::Left,
+            expr: expr_op!(InfixOperator::Add, 5, 1),
+        }
+    );
 
-#[test]
-#[should_panic]
-fn unordered_expr_unary_op() {
-    let expr = [expr_unary_op!(UnaryOperator::Neg, 2)];
-    eval_calculation(&expr).unwrap();
+    let stream = ExprStream::from_vec(vec![expr_unary_op!(UnaryOperator::Neg, 2)]);
+    assert_eq!(
+        stream.evaluate().unwrap_err(),
+        EvalCalculationErr::UnorderedExpressions {
+            index: 2,
+            position: OperandPosition::Unary,
+            expr: expr_unary_op!(UnaryOperator::Neg, 2)
+        }
+    );
 }
 
 #[test]

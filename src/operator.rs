@@ -56,7 +56,7 @@ fn factoral(num: f32) -> f32 {
 }
 
 /// Describes an operand position relative to an `Operator`
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 #[repr(u8)]
 pub enum OperandPosition {
     /// To the left: _x_ + y
@@ -135,7 +135,7 @@ impl UnaryOperator {
     /// # Returns
     /// A vec of `UnaryOperator`s.
     #[must_use]
-    pub fn get_operators_of_unary_type(unary_type: &UnaryType) -> Vec<Self> {
+    pub fn get_operators_of_unary_type(unary_type: UnaryType) -> Vec<Self> {
         match unary_type {
             UnaryType::Prefix => vec![Self::Neg, Self::BitNot],
             UnaryType::Suffix => vec![Self::Factorial],

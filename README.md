@@ -31,7 +31,7 @@ if stream.is_valid().is_none() {
   /// The boolean parameter means enable spacing between infix operators (e.g. + or *)
   /// If it were true, `1 + -(4 * 2.5)`
   let reconstructed = stream.as_text(false);
-  assert_eq!(reconstructed, val);
+  assert_eq!(reconstructed, cal);
 }
 ```
 

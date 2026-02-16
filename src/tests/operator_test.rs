@@ -86,15 +86,21 @@ fn operators_in_tokens() {
 
 #[test]
 fn get_operators_of_unary_type() {
-    let prefixes = UnaryOperator::get_operators_of_unary_type(&UnaryType::Prefix);
+    let prefixes = UnaryOperator::get_operators_of_unary_type(UnaryType::Prefix);
     for pre in prefixes {
         assert_eq!(pre.unary_type(), UnaryType::Prefix);
+    }
+
+    let prefixes = UnaryOperator::get_operators_of_unary_type(UnaryType::Suffix);
+    for pre in prefixes {
+        assert_eq!(pre.unary_type(), UnaryType::Suffix);
     }
 }
 
 #[test]
 fn display_operator() {
     println!("{}", Operator::Unary(UnaryOperator::Neg));
+    println!("{}", Operator::Unary(UnaryOperator::Factorial));
     println!("{}", Operator::Infix(InfixOperator::Add));
 }
 

@@ -98,7 +98,7 @@ pub fn eval_calculation(exprs: &[Expression]) -> Result<f32, EvalCalculationErr>
 }
 
 /// Used for errors about evaluating a calculation.
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum EvalCalculationErr {
     /// Raised when an expression (of the type `Op`, `Left`, `Right`) can't get the value of the
     /// linked expression, because it hasn't been evaluated yet.

@@ -52,6 +52,7 @@ fn as_text() {
             assert_eq!(TokenStream::from_text_force($text).as_text(false), $text);
         };
     }
+
     assert_eq!(
         TokenStream::from_vec(EXAMPLE_TOKENS.to_vec()).as_text(false),
         CALCULATION_EXAMPLE
@@ -64,6 +65,11 @@ fn as_text() {
     unspace_eq!("10!+(2!*2)");
     unspace_eq!("(2*2)!+10");
     unspace_eq!("(2!*2!)+(10!+10!)");
+    unspace_eq!("2!+-(2!)+2");
+    assert_eq!(
+        TokenStream::from_vec(EXAMPLE_TOKENS.to_vec()).as_text(false),
+        CALCULATION_EXAMPLE
+    );
 }
 
 #[test]
@@ -180,7 +186,7 @@ fn higher_bracket_invalid() {
     assert_eq!(
         stream.is_valid().unwrap(),
         TokenInvalidReason::OperatorHigherBracketLevel { at: 0 }
-    )
+    );
 }
 
 // Brackets
