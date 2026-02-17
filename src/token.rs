@@ -473,8 +473,8 @@ impl TokenStream {
     ///
     /// let tokens = vec![token_number!(0, 1.0), token_infix!(0, InfixOperator::Add), token_number!(0, 2.0)];
     ///
-    /// assert_eq!(TokenStream::from_vec(tokens.clone()).as_text(false), "1+2");
-    /// assert_eq!(TokenStream::from_vec(tokens).as_text(true), "1 + 2");
+    /// assert_eq!(TokenStream::from_vec(tokens.clone()).as_text(false), Ok("1+2".to_string()));
+    /// assert_eq!(TokenStream::from_vec(tokens).as_text(true), Ok("1 + 2".to_string()));
     /// ```
     /// # Note
     /// Can accept malformed tokens, and reconstruction doesn't match exactly with it's inputs e.g.
