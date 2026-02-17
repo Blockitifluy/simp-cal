@@ -232,7 +232,11 @@ impl TokenStream {
                 bracket_count += 1;
                 last_bracket_input = i;
                 last_bracket = r.len();
-                mul_start_bracket_handle(&mut r, bracket_count);
+                if let Some(last_token) = r.last()
+                    && !last_token.token_type.is_operator()
+                {
+                    r.push(token_infix!(bracket_count - 1, InfixOperator::Mul));
+                }
                 continue;
             }
 
@@ -334,7 +338,6 @@ impl TokenStream {
     pub fn is_valid(&self) -> Option<TokenInvalidReason> {
         // Should start with a number or unary value
         let first = self.first()?;
-        println!("{:?}", first.token_type);
         if !first.token_type.is_unary() && !first.token_type.is_number() {
             return Some(TokenInvalidReason::InvalidStart);
         }
@@ -351,23 +354,26 @@ impl TokenStream {
 
         for tok_window in self.windows(2usize) {
             let (other, current) = (tok_window[0], tok_window[1]);
+            let other_type = &other.token_type;
 
             match current.token_type {
                 // Two numbers next to another
                 TokenType::Number(_) => {
-                    if !other.token_type.is_operator() {
+                    if !other_type.is_operator() {
                         return Some(TokenInvalidReason::NumberPrevInvalid);
                     }
                 }
                 // Two infix next to another
                 TokenType::Infix(_) => {
-                    if !other.token_type.is_number() && !other.token_type.is_unary() {
+                    if !other_type.is_number() && !other.token_type.is_unary() {
                         return Some(TokenInvalidReason::InfixPrevInvalid);
                     }
                 }
                 // Unary not next to infix
                 TokenType::Unary(_) => {
-                    if !other.token_type.is_infix() {
+                    let valid_unary =
+                        other_type.is_unary() && (other.bracket_count >= current.bracket_count);
+                    if other_type.is_number() || valid_unary {
                         return Some(TokenInvalidReason::UnaryPrevInvalid);
                     }
                 }
@@ -422,6 +428,41 @@ impl TokenStream {
         self.as_expressions().expect("couldn't parse expressions")
     }
 
+    /// Deconstructs tokens into it's `String` form, if `Self` is invalid then it returns the
+    /// [`TokenInvalidReason`].
+    /// # Arguments
+    /// - `tokens`: the tokens to be reconstructed
+    /// - `include_spacing`: include whitespace between operators
+    /// # Errors
+    /// See [`ExprStream::is_valid`].
+    /// # Returns
+    /// The reconstructed string
+    /// # Examples
+    /// ```
+    /// use simp_cal::{token::*, operator::InfixOperator, token_number, token_infix};
+    ///
+    /// let tokens = vec![token_number!(0, 1.0), token_infix!(0, InfixOperator::Add), token_number!(0, 2.0)];
+    ///
+    /// assert_eq!(TokenStream::from_vec(tokens.clone()).as_text(false), Ok("1+2".to_string()));
+    /// assert_eq!(TokenStream::from_vec(tokens).as_text(true), Ok("1 + 2".to_string()));
+    ///
+    /// let tokens = vec![token_number!(0, 1.0), token_number!(0, 2.0)];
+    ///
+    /// assert_eq!(
+    ///     TokenStream::from_vec(tokens).as_text(false),
+    ///     Err(TokenInvalidReason::NumberPrevInvalid)
+    /// );
+    /// ```
+    /// # Note
+    /// Can accept malformed tokens, and reconstruction doesn't match exactly with it's inputs e.g.
+    /// _1.0_ will always become _1_.
+    pub fn as_text(&self, include_spacing: bool) -> Result<String, TokenInvalidReason> {
+        self.is_valid().map_or_else(
+            || Ok(self.as_text_no_check(include_spacing)),
+            |err| Err(err),
+        )
+    }
+
     /// Deconstructs tokens into it's `String` form.
     /// # Arguments
     /// - `tokens`: the tokens to be reconstructed
@@ -434,14 +475,14 @@ impl TokenStream {
     ///
     /// let tokens = vec![token_number!(0, 1.0), token_infix!(0, InfixOperator::Add), token_number!(0, 2.0)];
     ///
-    /// assert_eq!(TokenStream::from_vec(tokens.clone()).as_text(false), "1+2");
-    /// assert_eq!(TokenStream::from_vec(tokens).as_text(true), "1 + 2");
+    /// assert_eq!(TokenStream::from_vec(tokens.clone()).as_text_no_check(false), "1+2");
+    /// assert_eq!(TokenStream::from_vec(tokens).as_text_no_check(true), "1 + 2");
     /// ```
     /// # Note
     /// Can accept malformed tokens, and reconstruction doesn't match exactly with it's inputs e.g.
     /// _1.0_ will always become _1_.
     #[must_use]
-    pub fn as_text(&self, include_spacing: bool) -> String {
+    pub fn as_text_no_check(&self, include_spacing: bool) -> String {
         let mut b = String::with_capacity(16);
         let mut last_bracket_count = 0;
         let mut suffix_to_push: Option<String> = None;
@@ -543,16 +584,6 @@ impl fmt::Display for TokenStream {
             write!(f, "{tok}, ")?;
         }
         Ok(())
-    }
-}
-
-fn mul_start_bracket_handle(r: &mut Vec<Token>, bracket_count: BracketLevel) {
-    let Some(last_token) = r.last() else {
-        return;
-    };
-
-    if !last_token.token_type.is_operator() {
-        r.push(token_infix!(bracket_count - 1, InfixOperator::Mul));
     }
 }
 

@@ -14,6 +14,8 @@ use crate::{
 };
 
 use super::examples::{CALCULATION_EXAMPLE, EXAMPLE_EXPRESSIONS};
+use InfixOperator::*;
+use UnaryOperator::*;
 
 // Parsing
 
@@ -135,15 +137,52 @@ fn expr_unary_operand_not_number() {
 }
 
 #[test]
-fn to_vec() {
-    let vec_expr = EXAMPLE_EXPRESSIONS.to_vec();
-
-    assert_eq!(ExprStream::from_vec(vec_expr.clone()).to_vec(), vec_expr)
+fn force_token_vec() {
+    let _ = ExprStream::from_token_vec_force(&EXAMPLE_TOKENS);
 }
 
 #[test]
-fn force_token_vec() {
-    let _ = ExprStream::from_token_vec_force(&EXAMPLE_TOKENS);
+fn expr_infix_err() {
+    assert_eq!(
+        ExprStream::from_token_vec(&vec![
+            token_infix!(Add),
+            token_infix!(Mul),
+            token_number!(0.0)
+        ]),
+        Err(ExpressionParsingError::OperandNotNumber {
+            position: OperandPosition::Left,
+            token: token_infix!(Add)
+        })
+    );
+
+    assert_eq!(
+        ExprStream::from_token_vec(&vec![
+            token_number!(0.0),
+            token_infix!(Pow),
+            token_number!(0.0),
+            token_infix!(Mul),
+            token_infix!(Add),
+        ]),
+        Err(ExpressionParsingError::OperandNotNumber {
+            position: OperandPosition::Right,
+            token: token_infix!(Add)
+        })
+    );
+}
+
+#[test]
+fn get_number_from_token() {
+    assert_eq!(
+        ExprStream::from_token_vec(&vec![
+            token_number!(0.0),
+            token_infix!(Mul),
+            token_infix!(Add),
+        ]),
+        Err(ExpressionParsingError::OperandNotNumber {
+            position: OperandPosition::Right,
+            token: token_infix!(Add)
+        })
+    );
 }
 
 // Display

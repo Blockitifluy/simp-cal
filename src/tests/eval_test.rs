@@ -50,7 +50,7 @@ fn unordered_expr() {
         EvalCalculationErr::UnorderedExpressions {
             index: 2,
             position: OperandPosition::Right,
-            expr: expr
+            expr
         }
     );
 
@@ -60,7 +60,7 @@ fn unordered_expr() {
         EvalCalculationErr::UnorderedExpressions {
             index: 2,
             position: OperandPosition::Left,
-            expr: expr
+            expr
         }
     );
 

@@ -16,11 +16,13 @@ macro_rules! expr_err {
     };
 }
 
-fn get_operants_operator_of_expr(
+#[inline]
+fn eval_infix(
+    op: InfixOperator,
     expr: &Expression,
     results: &[f32],
-) -> Result<(f32, f32), EvalCalculationErr> {
-    match expr.expr_type {
+) -> Result<f32, EvalCalculationErr> {
+    let (l_ant, r_ant) = match expr.expr_type {
         ExpressionType::Whole { left, right } => Ok((left, right)),
         ExpressionType::Left { left, right } => {
             let Some(r_val) = results.get(right) else {
@@ -44,19 +46,12 @@ fn get_operants_operator_of_expr(
             Ok((*l_val, *r_val))
         }
         _ => unreachable!("infix unreachable"),
-    }
-}
-
-fn eval_infix(
-    op: InfixOperator,
-    expr: &Expression,
-    results: &[f32],
-) -> Result<f32, EvalCalculationErr> {
-    let (l_ant, r_ant) = get_operants_operator_of_expr(expr, results)?;
+    }?;
 
     Ok(op.compute(l_ant, r_ant))
 }
 
+#[inline]
 fn eval_unary(
     op: UnaryOperator,
     expr: &Expression,
@@ -74,15 +69,7 @@ fn eval_unary(
     }
 }
 
-/// Evaluates a slice of `Expression`s to a `f32` number.
-/// # Arguments
-/// - `exprs`: A slice of `Expression`s
-/// # Errors
-/// - `UnorderedExpressions`: Caused when the function tries to evaluate an `Expression`, linking to
-///   another that hasn't been evaluate yet. Check if you are sorting the `Expression`s in accordance with the order of operators.
-/// # Returns
-/// The calculated number
-pub fn eval_calculation(exprs: &[Expression]) -> Result<f32, EvalCalculationErr> {
+pub(crate) fn eval_calculation(exprs: &[Expression]) -> Result<f32, EvalCalculationErr> {
     let mut results: Vec<f32> = Vec::with_capacity(16);
 
     for expr in exprs {

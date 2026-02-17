@@ -49,16 +49,23 @@ fn number_parse_number_panic() {
 fn as_text() {
     macro_rules! unspace_eq {
         ($text:literal) => {
-            assert_eq!(TokenStream::from_text_force($text).as_text(false), $text);
+            assert_eq!(
+                TokenStream::from_text_force($text).as_text_no_check(false),
+                $text
+            );
+            assert_eq!(
+                TokenStream::from_text_force($text).as_text(false),
+                Ok($text.to_string())
+            );
         };
     }
 
     assert_eq!(
-        TokenStream::from_vec(EXAMPLE_TOKENS.to_vec()).as_text(false),
+        TokenStream::from_vec(EXAMPLE_TOKENS.to_vec()).as_text_no_check(false),
         CALCULATION_EXAMPLE
     );
     assert_eq!(
-        TokenStream::from_vec(EXAMPLE_TOKENS.to_vec()).as_text(true),
+        TokenStream::from_vec(EXAMPLE_TOKENS.to_vec()).as_text_no_check(true),
         CALCULATION_SPACING_EXAMPLE
     );
     unspace_eq!("10!+(2*2)!");
@@ -67,9 +74,18 @@ fn as_text() {
     unspace_eq!("(2!*2!)+(10!+10!)");
     unspace_eq!("2!+-(2!)+2");
     assert_eq!(
-        TokenStream::from_vec(EXAMPLE_TOKENS.to_vec()).as_text(false),
+        TokenStream::from_vec(EXAMPLE_TOKENS.to_vec()).as_text_no_check(false),
         CALCULATION_EXAMPLE
     );
+    assert_eq!(
+        TokenStream::from_vec(vec![
+            token_unary!(UnaryOperator::Neg),
+            token_unary!(UnaryOperator::Neg),
+            token_number!(2.0)
+        ])
+        .as_text(false),
+        Err(TokenInvalidReason::UnaryPrevInvalid)
+    )
 }
 
 #[test]

@@ -77,11 +77,20 @@ fn parse_calculation(buffer: &str, flags: ProgramFlags) -> ProgramResult<ExprStr
 }
 
 fn calculate_buffer(buffer: &str, flags: ProgramFlags) -> ProgramResult<()> {
-    let exprs = parse_calculation(buffer, flags)?;
+    verbose!(flags.verbose, "# Parsing\ninput calculation: {}", buffer);
+
+    let tokens = TokenStream::from_text(buffer)?;
+    verbose!(flags.verbose, "tokens: {}", tokens);
+
+    let exprs = tokens.as_expressions()?;
+    if flags.verbose || !flags.eval {
+        println!("expressions: {exprs}");
+    }
+
     if flags.eval {
         verbose!(flags.verbose, "\n# Eval");
 
-        let eval_result = eval_calculation(&exprs)?;
+        let eval_result = exprs.evaluate()?;
         println!("{eval_result}");
     }
     Ok(())

@@ -313,7 +313,7 @@ impl Ord for ExprBind {
     }
 }
 
-const fn get_expression_type(
+fn get_expression_type(
     prev_token: Token,
     next_token: Token,
     prev_oper: Option<usize>,
@@ -321,42 +321,24 @@ const fn get_expression_type(
 ) -> Result<ExpressionType, ExpressionParsingError> {
     match (prev_oper, next_oper) {
         (None, None) => {
-            let TokenType::Number(prev) = prev_token.token_type else {
-                return Err(ExpressionParsingError::OperandNotNumber {
-                    position: OperandPosition::Left,
-                    token: prev_token,
-                });
-            };
-            let TokenType::Number(next) = next_token.token_type else {
-                return Err(ExpressionParsingError::OperandNotNumber {
-                    position: OperandPosition::Right,
-                    token: next_token,
-                });
-            };
+            let (prev, next) = (
+                get_number_from_token(&prev_token, OperandPosition::Left)?,
+                get_number_from_token(&next_token, OperandPosition::Right)?,
+            );
             Ok(ExpressionType::Whole {
                 left: prev,
                 right: next,
             })
         }
         (None, Some(r_expr)) => {
-            let TokenType::Number(prev) = prev_token.token_type else {
-                return Err(ExpressionParsingError::OperandNotNumber {
-                    position: OperandPosition::Left,
-                    token: prev_token,
-                });
-            };
+            let prev = get_number_from_token(&prev_token, OperandPosition::Left)?;
             Ok(ExpressionType::Left {
                 left: prev,
                 right: r_expr,
             })
         }
         (Some(l_expr), None) => {
-            let TokenType::Number(next) = next_token.token_type else {
-                return Err(ExpressionParsingError::OperandNotNumber {
-                    position: OperandPosition::Right,
-                    token: next_token,
-                });
-            };
+            let next = get_number_from_token(&next_token, OperandPosition::Right)?;
             Ok(ExpressionType::Right {
                 left: l_expr,
                 right: next,
@@ -376,16 +358,6 @@ fn get_expr_at_place(place: usize, taken_tokens: &[ExprBind]) -> Option<usize> {
         }
     }
     None
-}
-
-fn get_neighbouring_expressions(
-    place: usize,
-    taken_tokens: &[ExprBind],
-) -> (Option<usize>, Option<usize>) {
-    (
-        get_expr_at_place(place - 1, taken_tokens),
-        get_expr_at_place(place + 1, taken_tokens),
-    )
 }
 
 fn expr_infix(
@@ -429,7 +401,10 @@ fn expr_infix(
             },
         ))
     } else {
-        let (prev_expr, next_expr) = get_neighbouring_expressions(*place, taken_tokens);
+        let (prev_expr, next_expr) = (
+            get_expr_at_place(place - 1, taken_tokens),
+            get_expr_at_place(place + 1, taken_tokens),
+        );
 
         let expr_type = get_expression_type(*prev_token, *next_token, prev_expr, next_expr)?;
 
@@ -480,26 +455,12 @@ fn expr_unary(
     }
 }
 
-fn operation_in_cal_to_expr(
-    taken_tokens: &[ExprBind],
-    tokens: &[Token],
-    proc_oper: ProcessedOperator,
-) -> Result<Expression, ExpressionParsingError> {
-    match proc_oper.operator {
-        Operator::Infix(_) => expr_infix(proc_oper, tokens, taken_tokens),
-        Operator::Unary(_) => expr_unary(proc_oper, tokens, taken_tokens),
-    }
-}
-
 fn fuse_taken_tokens(taken_tokens: &mut Vec<ExprBind>) {
     if taken_tokens.is_empty() {
         return;
     }
 
-    taken_tokens.sort();
-
     let mut write_idx = 0;
-
     for i in 1..taken_tokens.len() {
         let token_bind: ExprBind = *taken_tokens
             .get(i)
@@ -526,6 +487,20 @@ fn fuse_taken_tokens(taken_tokens: &mut Vec<ExprBind>) {
 
     // Truncate to remove the extra elements
     taken_tokens.truncate(write_idx + 1);
+}
+
+fn get_number_from_token(
+    token: &Token,
+    position: OperandPosition,
+) -> Result<f32, ExpressionParsingError> {
+    let TokenType::Number(prev) = token.token_type else {
+        return Err(ExpressionParsingError::OperandNotNumber {
+            position,
+            token: *token,
+        });
+    };
+
+    Ok(prev)
 }
 
 /// A stream of `Expression`s.
@@ -599,9 +574,12 @@ impl ExprStream {
         let mut expressions = Vec::<Expression>::with_capacity(16);
         let mut taken_tokens = Vec::<ExprBind>::with_capacity(16);
 
-        for (i, proc_op) in operators.into_iter().enumerate() {
-            let index = proc_op.index;
-            let expr: Expression = operation_in_cal_to_expr(&taken_tokens, stream, proc_op)?;
+        for (i, op) in operators.into_iter().enumerate() {
+            let index = op.index;
+            let expr: Expression = match op.operator {
+                Operator::Infix(_) => expr_infix(op, stream, &taken_tokens),
+                Operator::Unary(_) => expr_unary(op, stream, &taken_tokens),
+            }?;
 
             let bind = match expr.operator {
                 Operator::Infix(_) => ExprBind::new_pos(i, index),
@@ -609,7 +587,11 @@ impl ExprStream {
             };
 
             expressions.push(expr);
-            taken_tokens.push(bind);
+            if let Some(insert_to) = taken_tokens.iter().rposition(|b| *b >= bind) {
+                taken_tokens.insert(insert_to, bind);
+            } else {
+                taken_tokens.push(bind);
+            }
             fuse_taken_tokens(&mut taken_tokens);
         }
 
@@ -627,11 +609,21 @@ impl ExprStream {
         Self { expressions }
     }
 
-    /// Evaluates the value of `Self`
+    /// Evaluates a slice of `Expression`s to a `f32` number.
+    /// # Arguments
+    /// - `exprs`: A slice of `Expression`s
     /// # Errors
-    /// See [`crate::eval::eval_calculation`]
+    /// - `UnorderedExpressions`: Caused when the function tries to evaluate an `Expression`, linking to
+    ///   another that hasn't been evaluate yet. Check if you are sorting the `Expression`s in accordance with the order of operators.
+    /// # Example
+    /// ```
+    /// use simp_cal::expression::ExprStream;
+    ///
+    /// assert_eq!(ExprStream::from_text_force("1+(2*3)").evaluate().unwrap(), 7.0);
+    /// assert_eq!(ExprStream::from_text_force("10+-5").evaluate().unwrap(), 5.0);
+    /// ```
     /// # Returns
-    /// A number that the `ExprStream` is equal to or an `EvalCalculationErr`.
+    /// The calculated number
     pub fn evaluate(&self) -> Result<f32, crate::eval::EvalCalculationErr> {
         eval_calculation(&self.expressions)
     }

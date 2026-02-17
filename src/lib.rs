@@ -1,8 +1,6 @@
 //! Parses calculations into expressions that could be evaluated
 
 #![warn(missing_docs)]
-#![warn(clippy::explicit_into_iter_loop)]
-#![warn(clippy::explicit_iter_loop)]
 #![warn(clippy::suspicious)]
 #![warn(clippy::cargo)]
 #![warn(clippy::complexity)]
