@@ -15,7 +15,6 @@ use crate::{
 
 use super::examples::{CALCULATION_EXAMPLE, EXAMPLE_EXPRESSIONS};
 use InfixOperator::*;
-use UnaryOperator::*;
 
 // Parsing
 

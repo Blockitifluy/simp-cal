@@ -457,10 +457,8 @@ impl TokenStream {
     /// Can accept malformed tokens, and reconstruction doesn't match exactly with it's inputs e.g.
     /// _1.0_ will always become _1_.
     pub fn as_text(&self, include_spacing: bool) -> Result<String, TokenInvalidReason> {
-        self.is_valid().map_or_else(
-            || Ok(self.as_text_no_check(include_spacing)),
-            |err| Err(err),
-        )
+        self.is_valid()
+            .map_or_else(|| Ok(self.as_text_no_check(include_spacing)), Err)
     }
 
     /// Deconstructs tokens into it's `String` form.
@@ -475,8 +473,8 @@ impl TokenStream {
     ///
     /// let tokens = vec![token_number!(0, 1.0), token_infix!(0, InfixOperator::Add), token_number!(0, 2.0)];
     ///
-    /// assert_eq!(TokenStream::from_vec(tokens.clone()).as_text_no_check(false), "1+2");
-    /// assert_eq!(TokenStream::from_vec(tokens).as_text_no_check(true), "1 + 2");
+    /// assert_eq!(TokenStream::from_vec(tokens.clone()).as_text(false), "1+2");
+    /// assert_eq!(TokenStream::from_vec(tokens).as_text(true), "1 + 2");
     /// ```
     /// # Note
     /// Can accept malformed tokens, and reconstruction doesn't match exactly with it's inputs e.g.
