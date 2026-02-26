@@ -1,5 +1,5 @@
 //! Utility module, for searching for operators inside a collection of tokens.
-use crate::token::{BracketLevel, Token, TokenType};
+use crate::token::{BracketLevel, Token};
 use std::fmt;
 
 /// The type used to store an operator's binding power
@@ -381,10 +381,6 @@ pub fn get_operator_in_tokens(tokens: &[Token]) -> Vec<ProcessedOperator> {
     tokens
         .iter()
         .enumerate()
-        .filter_map(|(i, t)| match t.token_type {
-            TokenType::Infix(op) => Some(ProcessedOperator::new_infix(t.bracket_count, op, i)),
-            TokenType::Unary(op) => Some(ProcessedOperator::new_unary(t.bracket_count, op, i)),
-            TokenType::Number(_) => None,
-        })
+        .filter_map(|(i, t)| t.as_processed_operator(i))
         .collect()
 }

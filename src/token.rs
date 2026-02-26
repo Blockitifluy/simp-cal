@@ -83,6 +83,20 @@ impl Token {
             token_type,
         }
     }
+
+    /// Creates a `ProcessedOperator` from `self`.
+    /// # Arguments
+    /// - `i`: the index of the token inside of a collection
+    /// # Returns
+    /// An optional `ProcessedOperator`. Returns `None` when token isn't a type of operator.
+    #[must_use]
+    pub const fn as_processed_operator(&self, i: usize) -> Option<ProcessedOperator> {
+        match self.token_type {
+            TokenType::Infix(op) => Some(ProcessedOperator::new_infix(self.bracket_count, op, i)),
+            TokenType::Unary(op) => Some(ProcessedOperator::new_unary(self.bracket_count, op, i)),
+            TokenType::Number(_) => None,
+        }
+    }
 }
 
 impl fmt::Display for Token {

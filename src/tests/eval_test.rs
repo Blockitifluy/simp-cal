@@ -25,12 +25,12 @@ fn factoral_one() {
 
 #[test]
 fn factoral_less_than_one() {
-    let stream = ExprStream::from_text_force("0!");
-    assert_eq!(stream.evaluate().unwrap(), 0.0);
-    let stream = ExprStream::from_text_force("0.5!");
-    assert_eq!(stream.evaluate().unwrap(), 0.0);
-    let stream = ExprStream::from_text_force("(-0.5)!");
-    assert_eq!(stream.evaluate().unwrap(), 0.0);
+    assert_eq!(ExprStream::from_text_force("0!").evaluate().unwrap(), 0.0);
+    assert_eq!(ExprStream::from_text_force("0.5!").evaluate().unwrap(), 0.0);
+    assert_eq!(
+        ExprStream::from_text_force("(-0.5)!").evaluate().unwrap(),
+        0.0
+    );
 }
 
 // Evaluation

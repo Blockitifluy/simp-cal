@@ -489,7 +489,7 @@ fn fuse_taken_tokens(taken_tokens: &mut Vec<ExprBind>) {
     taken_tokens.truncate(write_idx + 1);
 }
 
-fn get_number_from_token(
+const fn get_number_from_token(
     token: &Token,
     position: OperandPosition,
 ) -> Result<f32, ExpressionParsingError> {

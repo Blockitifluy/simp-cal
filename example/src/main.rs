@@ -1,4 +1,4 @@
-use simp_cal::{eval::*, expression::ExprStream, token::*};
+use simp_cal::token::*;
 use std::{env, error::Error, io};
 
 macro_rules! verbose {
@@ -60,20 +60,6 @@ impl Default for ProgramFlags {
             version: false,
         }
     }
-}
-
-fn parse_calculation(buffer: &str, flags: ProgramFlags) -> ProgramResult<ExprStream> {
-    // Parsing
-    verbose!(flags.verbose, "# Parsing\ninput calculation: {}", buffer);
-
-    let tokens = TokenStream::from_text(buffer)?;
-    verbose!(flags.verbose, "tokens: {}", tokens);
-
-    let exprs = tokens.as_expressions()?;
-    if flags.verbose || !flags.eval {
-        println!("expressions: {exprs}");
-    }
-    Ok(exprs)
 }
 
 fn calculate_buffer(buffer: &str, flags: ProgramFlags) -> ProgramResult<()> {
