@@ -1,7 +1,4 @@
-#![allow(clippy::perf)]
-#![allow(clippy::pedantic)]
-
-use crate::operator::*;
+use crate::{CalResult, CalResultUInt, operator::*};
 
 use super::examples::*;
 
@@ -59,7 +56,7 @@ fn compute() {
     assert_eq!(InfixOperator::Add.compute(5.0, 5.0), 10.0);
     assert_eq!(InfixOperator::Sub.compute(5.0, 2.5), 2.5);
     assert_eq!(InfixOperator::Mul.compute(5.0, 5.0), 25.0);
-    assert_eq!(InfixOperator::Div.compute(10.0, 0.0), f32::INFINITY);
+    assert_eq!(InfixOperator::Div.compute(10.0, 0.0), CalResult::INFINITY);
     assert_eq!(InfixOperator::Pow.compute(2.0, 3.0), 8.0);
 }
 
@@ -127,7 +124,7 @@ fn new_processed_operator() {
 #[test]
 fn bit_not() {
     let r = UnaryOperator::BitNot.compute(5.0);
-    assert_eq!(r, !5u32 as f32);
+    assert_eq!(r, !(5 as CalResultUInt) as CalResult);
 }
 
 #[test]

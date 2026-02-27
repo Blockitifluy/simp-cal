@@ -1,6 +1,3 @@
-#![allow(clippy::perf)]
-#![allow(clippy::pedantic)]
-
 use crate::{
     expr_left, expr_op, expr_right, expr_unary_op, expr_unary_whole, expr_whole,
     expression::{
@@ -69,7 +66,7 @@ fn expr_prev_infix_err() {
     let tokens = vec![token_infix!(InfixOperator::Add), token_number!(1.0)];
     assert_eq!(
         ExprStream::from_token_vec(&tokens).unwrap_err(),
-        ExpressionParsingError::NoNeighbouringOperands {
+        ExpressionParsingError::NoNeighboringOperands {
             position: OperandPosition::Left,
             place: 0
         }
@@ -78,7 +75,7 @@ fn expr_prev_infix_err() {
     let tokens = vec![token_number!(1.0), token_infix!(InfixOperator::Add)];
     assert_eq!(
         ExprStream::from_token_vec(&tokens).unwrap_err(),
-        ExpressionParsingError::NoNeighbouringOperands {
+        ExpressionParsingError::NoNeighboringOperands {
             position: OperandPosition::Right,
             place: 1
         }
@@ -90,7 +87,7 @@ fn expr_unary_no_neighbour() {
     let tokens = vec![token_unary!(UnaryOperator::Neg)];
     assert_eq!(
         ExprStream::from_token_vec(&tokens).unwrap_err(),
-        ExpressionParsingError::NoNeighbouringOperands {
+        ExpressionParsingError::NoNeighboringOperands {
             position: OperandPosition::Unary,
             place: 0
         }
@@ -143,11 +140,9 @@ fn force_token_vec() {
 #[test]
 fn expr_infix_err() {
     assert_eq!(
-        ExprStream::from_token_vec(&vec![
-            token_infix!(Add),
+        ExprStream::from_token_vec(&[token_infix!(Add),
             token_infix!(Mul),
-            token_number!(0.0)
-        ]),
+            token_number!(0.0)]),
         Err(ExpressionParsingError::OperandNotNumber {
             position: OperandPosition::Left,
             token: token_infix!(Add)
@@ -155,13 +150,11 @@ fn expr_infix_err() {
     );
 
     assert_eq!(
-        ExprStream::from_token_vec(&vec![
-            token_number!(0.0),
+        ExprStream::from_token_vec(&[token_number!(0.0),
             token_infix!(Pow),
             token_number!(0.0),
             token_infix!(Mul),
-            token_infix!(Add),
-        ]),
+            token_infix!(Add)]),
         Err(ExpressionParsingError::OperandNotNumber {
             position: OperandPosition::Right,
             token: token_infix!(Add)
@@ -172,11 +165,9 @@ fn expr_infix_err() {
 #[test]
 fn get_number_from_token() {
     assert_eq!(
-        ExprStream::from_token_vec(&vec![
-            token_number!(0.0),
+        ExprStream::from_token_vec(&[token_number!(0.0),
             token_infix!(Mul),
-            token_infix!(Add),
-        ]),
+            token_infix!(Add)]),
         Err(ExpressionParsingError::OperandNotNumber {
             position: OperandPosition::Right,
             token: token_infix!(Add)
@@ -190,7 +181,7 @@ fn get_number_from_token() {
 fn expr_stream_display() {
     let stream = ExprStream::from_vec(EXAMPLE_EXPRESSIONS.to_vec());
 
-    assert_eq!(format!("{}", stream), EXAMPLE_EXPRESSIONS_DISPLAY);
+    assert_eq!(format!("{stream}"), EXAMPLE_EXPRESSIONS_DISPLAY);
 }
 
 #[test]
@@ -258,21 +249,21 @@ fn expression_err_display() {
 
     println!(
         "{}",
-        ExpressionParsingError::NoNeighbouringOperands {
+        ExpressionParsingError::NoNeighboringOperands {
             position: OperandPosition::Right,
             place: 1
         }
     );
     println!(
         "{}",
-        ExpressionParsingError::NoNeighbouringOperands {
+        ExpressionParsingError::NoNeighboringOperands {
             position: OperandPosition::Unary,
             place: 1
         }
     );
     println!(
         "{}",
-        ExpressionParsingError::NoNeighbouringOperands {
+        ExpressionParsingError::NoNeighboringOperands {
             position: OperandPosition::Left,
             place: 1
         }
@@ -290,7 +281,7 @@ fn set_expr_in_stream() {
 
     stream[0] = expr;
 
-    assert_eq!(expr, stream[0])
+    assert_eq!(expr, stream[0]);
 }
 
 #[test]

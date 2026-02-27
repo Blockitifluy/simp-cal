@@ -15,6 +15,30 @@ pub mod expression;
 pub mod operator;
 pub mod token;
 
+/// The result when calculating
+#[cfg(feature = "f64")]
+pub type CalResult = f64;
+
+/// The result when calculating as int
+#[cfg(feature = "f64")]
+pub type CalResultInt = i64;
+
+/// The result when calculating as uint
+#[cfg(feature = "f64")]
+pub type CalResultUInt = u64;
+
+/// The result when calculating
+#[cfg(not(feature = "f64"))]
+pub type CalResult = f32;
+
+/// The result when calculating as int
+#[cfg(not(feature = "f64"))]
+pub type CalResultInt = i32;
+
+/// The result when calculating as uint
+#[cfg(not(feature = "f64"))]
+pub type CalResultUInt = u32;
+
 #[cfg(test)]
 mod tests {
     mod eval_test;

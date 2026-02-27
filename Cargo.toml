@@ -8,6 +8,9 @@ repository = "https://github.com/Blockitifluy/simp-cal"
 keywords = ["calculator"]
 categories = ["calculator"]
 
+[features]
+f64 = []
+
 [dependencies]
 
 [profile.release]

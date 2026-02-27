@@ -1,6 +1,7 @@
 //! Handles converting tokens into expressions for evaluation a calculation.
 use crate::{
-    eval::eval_calculation,
+    CalResult,
+    eval::{EvalCalculationError, eval_calculation},
     operator::{OperandPosition, Operator, ProcessedOperator, UnaryType, get_operator_in_tokens},
     token::{Token, TokenStream, TokenType},
 };
@@ -163,6 +164,31 @@ impl fmt::Display for Expression {
     }
 }
 
+/// Information on what an operator neighbours.
+#[repr(u8)]
+pub enum CalNeighbour {
+    /// Neighbours a token
+    Token(Token),
+    /// Neighbours an expression
+    Expr(usize),
+}
+impl CalNeighbour {
+    /// Creates `Self` based on a neighboring token and an optional neighboring expression.
+    /// # Arguments
+    /// - `tok`: the neighboring token
+    /// - `expr`: the option to an neighboring expression.
+    /// # Returns
+    /// `self`
+    #[must_use]
+    pub const fn new(tok: Token, expr: Option<usize>) -> Self {
+        if let Some(i) = expr {
+            Self::Expr(i)
+        } else {
+            Self::Token(tok)
+        }
+    }
+}
+
 /// A part of a parsed calculation.
 ///
 /// Its partiality is based on it's neighboring expressions and the operator's binding power.
@@ -179,7 +205,7 @@ pub enum ExpressionType {
     /// An expression with the left operand and operator owned.
     Left {
         /// Left operand
-        left: f32,
+        left: CalResult,
         /// Right operand (not owned)
         right: usize,
     },
@@ -188,19 +214,19 @@ pub enum ExpressionType {
         /// Left operand (not owned)
         left: usize,
         /// Right operand
-        right: f32,
+        right: CalResult,
     },
     /// An expression with both operands and operator owned.
     Whole {
         /// Left operand
-        left: f32,
+        left: CalResult,
         /// Right operand
-        right: f32,
+        right: CalResult,
     },
     /// An unary expression with an owned operand.
     UnaryWhole {
         /// Operand (owned)
-        operand: f32,
+        operand: CalResult,
     },
     /// An unary expression with no operands owned.
     UnaryOp {
@@ -209,33 +235,33 @@ pub enum ExpressionType {
     },
 }
 impl ExpressionType {
-    /// Is `Self` any type of _whole_. Including:
-    /// - `Whole`,
-    /// - `UnaryWhole`
+    /// Is [`self`] any type of [`ExpressionType::Whole`]. Including:
+    /// - [`ExpressionType::Whole`],
+    /// - [`ExpressionType::UnaryWhole`]
     /// # Returns
-    /// `true` if `Self` is any type of _whole_.
+    /// `true` if [`self`] is any type of [`ExpressionType::Whole`].
     #[must_use]
     pub const fn is_whole(&self) -> bool {
         matches!(self, Self::Whole { .. }) || matches!(self, Self::UnaryWhole { .. })
     }
 
     /// Is `Self` not any type of _whole_. Including:
-    /// - `Right`,
-    /// - `UnaryOp`
+    /// - [`ExpressionType::Right`],
+    /// - [`ExpressionType::UnaryOp`]
     /// # Returns
-    /// `true` if `Self` is not any type of _whole_.
+    /// `true` if [`self`] is not any type of [`ExpressionType::Whole`].
     #[must_use]
     pub const fn is_partial(&self) -> bool {
         !self.is_whole()
     }
 
-    /// Returns `true`, if `Self` is any type of unary expression.
+    /// Returns `true`, if [`self`] is any type of unary expression.
     #[must_use]
     pub const fn is_unary(&self) -> bool {
         matches!(self, Self::UnaryOp { .. }) || matches!(self, Self::UnaryWhole { .. })
     }
 
-    /// Returns `true`, if `Self` is any type of infix expression.
+    /// Returns `true`, if [`self`] is any type of infix expression.
     #[must_use]
     pub const fn is_infix(&self) -> bool {
         matches!(self, Self::Op { .. })
@@ -243,12 +269,81 @@ impl ExpressionType {
             || matches!(self, Self::Right { .. })
             || matches!(self, Self::Whole { .. })
     }
+
+    /// Creates a new infix [`ExpressionType`], from 2 tokens and the expression's index before and
+    /// after.
+    /// # Arguments
+    /// - `prev_token`: the previous token
+    /// - `next_token`: the next token
+    /// - `prev_expr`: the previous expression (option)
+    /// - `next_expr`: the next expression (option)
+    /// # Errors
+    /// - Returns [`ExpressionParsingError::OperandNotNumber`] if both expressions aren't [`None`],
+    ///   and either of the tokens aren't token type _number_.
+    /// # Returns
+    /// A result of [`self`] or a parsing error
+    pub fn from_tokens_infix(
+        prev: &CalNeighbour,
+        next: &CalNeighbour,
+    ) -> Result<Self, ExpressionParsingError> {
+        use CalNeighbour::{Expr, Token};
+        match (prev, next) {
+            (Token(l_tok), Token(r_tok)) => {
+                let (prev, next) = (
+                    l_tok
+                        .as_number()
+                        .ok_or(ExpressionParsingError::OperandNotNumber {
+                            position: OperandPosition::Left,
+                            token: *l_tok,
+                        })?,
+                    r_tok
+                        .as_number()
+                        .ok_or(ExpressionParsingError::OperandNotNumber {
+                            position: OperandPosition::Right,
+                            token: *r_tok,
+                        })?,
+                );
+                Ok(Self::Whole {
+                    left: prev,
+                    right: next,
+                })
+            }
+            (Token(l_tok), Expr(r_expr)) => {
+                let prev = l_tok
+                    .as_number()
+                    .ok_or(ExpressionParsingError::OperandNotNumber {
+                        position: OperandPosition::Left,
+                        token: *l_tok,
+                    })?;
+                Ok(Self::Left {
+                    left: prev,
+                    right: *r_expr,
+                })
+            }
+            (Expr(l_expr), Token(r_tok)) => {
+                let next = r_tok
+                    .as_number()
+                    .ok_or(ExpressionParsingError::OperandNotNumber {
+                        position: OperandPosition::Right,
+                        token: *r_tok,
+                    })?;
+                Ok(Self::Right {
+                    left: *l_expr,
+                    right: next,
+                })
+            }
+            (Expr(l_expr), Expr(r_expr)) => Ok(Self::Op {
+                left: *l_expr,
+                right: *r_expr,
+            }),
+        }
+    }
 }
 
 /// Represents a section of tokens owned by a expression
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ExprBind {
-    /// The `Expression` that owns this `ExprBind`.
+    /// The [`Expression`] that owns this [`ExprBind`].
     pub by: usize,
     /// The start of the range
     pub start: usize,
@@ -256,28 +351,28 @@ pub struct ExprBind {
     pub end: usize,
 }
 impl ExprBind {
-    /// Creates a new `ExprBind`.
+    /// Creates a new [`ExprBind`].
     /// # Arguments
-    /// - `by`: the `Expression` that owns this `ExprBind`
+    /// - `by`: the [`Expression`] that owns this [`ExprBind`]
     /// - `start`: the start of the range
     /// - `end`: the end of the range
     /// # Returns
-    /// A new `ExprBind`
+    /// A new [`ExprBind`]
     #[must_use]
     pub const fn new(by: usize, start: usize, end: usize) -> Self {
         Self { by, start, end }
     }
 
-    /// Creates a new `ExprBind` of the range of one `Expression`.
+    /// Creates a new [`ExprBind`] of the range of one [`Expression`].
     /// # Arguments
-    /// - `by`: the operator that owns this `ExprBind`
+    /// - `by`: the operator that owns this [`ExprBind`]
     /// - `token_pos`: the position of the operator
     #[must_use]
     pub const fn new_pos(by: usize, token_pos: usize) -> Self {
         Self::new(by, token_pos - 1, token_pos + 1)
     }
 
-    /// Does an index is contained in `self`?
+    /// Does an index is contained in [`self`]?
     /// # Arguments
     /// - `i`: the index
     /// # Returns
@@ -287,9 +382,9 @@ impl ExprBind {
         (self.start..=self.end).contains(&i)
     }
 
-    /// Is `self` intersecting with another `ExprBind`?
+    /// Is [`self`] intersecting with another [`ExprBind`]?
     /// # Arguments
-    /// - `range`: the other `ExprBind`
+    /// - `range`: the other [`ExprBind`]
     /// # Returns
     /// Is intersecting?
     #[must_use]
@@ -313,44 +408,6 @@ impl Ord for ExprBind {
     }
 }
 
-fn get_expression_type(
-    prev_token: Token,
-    next_token: Token,
-    prev_oper: Option<usize>,
-    next_oper: Option<usize>,
-) -> Result<ExpressionType, ExpressionParsingError> {
-    match (prev_oper, next_oper) {
-        (None, None) => {
-            let (prev, next) = (
-                get_number_from_token(&prev_token, OperandPosition::Left)?,
-                get_number_from_token(&next_token, OperandPosition::Right)?,
-            );
-            Ok(ExpressionType::Whole {
-                left: prev,
-                right: next,
-            })
-        }
-        (None, Some(r_expr)) => {
-            let prev = get_number_from_token(&prev_token, OperandPosition::Left)?;
-            Ok(ExpressionType::Left {
-                left: prev,
-                right: r_expr,
-            })
-        }
-        (Some(l_expr), None) => {
-            let next = get_number_from_token(&next_token, OperandPosition::Right)?;
-            Ok(ExpressionType::Right {
-                left: l_expr,
-                right: next,
-            })
-        }
-        (Some(l_expr), Some(r_expr)) => Ok(ExpressionType::Op {
-            left: l_expr,
-            right: r_expr,
-        }),
-    }
-}
-
 fn get_expr_at_place(place: usize, taken_tokens: &[ExprBind]) -> Option<usize> {
     for taken in taken_tokens {
         if taken.contains(place) {
@@ -367,13 +424,13 @@ fn expr_infix(
 ) -> Result<Expression, ExpressionParsingError> {
     let place = &proc_oper.index;
     let Some(prev_token) = tokens.get(place.wrapping_sub(1)) else {
-        return Err(ExpressionParsingError::NoNeighbouringOperands {
+        return Err(ExpressionParsingError::NoNeighboringOperands {
             position: OperandPosition::Left,
             place: *place,
         });
     };
     let Some(next_token) = tokens.get(place + 1) else {
-        return Err(ExpressionParsingError::NoNeighbouringOperands {
+        return Err(ExpressionParsingError::NoNeighboringOperands {
             position: OperandPosition::Right,
             place: *place,
         });
@@ -406,7 +463,10 @@ fn expr_infix(
             get_expr_at_place(place + 1, taken_tokens),
         );
 
-        let expr_type = get_expression_type(*prev_token, *next_token, prev_expr, next_expr)?;
+        let expr_type = ExpressionType::from_tokens_infix(
+            &CalNeighbour::new(*prev_token, prev_expr),
+            &CalNeighbour::new(*next_token, next_expr),
+        )?;
 
         Ok(Expression::new(proc_oper.operator, expr_type))
     }
@@ -419,7 +479,7 @@ fn expr_unary(
 ) -> Result<Expression, ExpressionParsingError> {
     let place = &proc_oper.index;
     let Some(next_tok) = tokens.get(place + 1) else {
-        return Err(ExpressionParsingError::NoNeighbouringOperands {
+        return Err(ExpressionParsingError::NoNeighboringOperands {
             position: OperandPosition::Unary,
             place: *place,
         });
@@ -489,21 +549,7 @@ fn fuse_taken_tokens(taken_tokens: &mut Vec<ExprBind>) {
     taken_tokens.truncate(write_idx + 1);
 }
 
-const fn get_number_from_token(
-    token: &Token,
-    position: OperandPosition,
-) -> Result<f32, ExpressionParsingError> {
-    let TokenType::Number(prev) = token.token_type else {
-        return Err(ExpressionParsingError::OperandNotNumber {
-            position,
-            token: *token,
-        });
-    };
-
-    Ok(prev)
-}
-
-/// A stream of `Expression`s.
+/// A stream of [`Expression`]s.
 ///
 /// Used for calculations.
 #[derive(Debug, Clone, Default, PartialEq)]
@@ -511,7 +557,7 @@ pub struct ExprStream {
     expressions: Vec<Expression>,
 }
 impl ExprStream {
-    /// Parses text to construct a `ExprStream`.
+    /// Parses text to construct a [`ExprStream`].
     /// # Arguments
     /// - `cal`: the calculation parsed
     /// # Errors
@@ -524,34 +570,34 @@ impl ExprStream {
         Ok(r.as_expressions()?)
     }
 
-    /// Parses text to construct a `ExprStream`, panicking when it encounters an error.
+    /// Parses text to construct a [`ExprStream`], panicking when it encounters an error.
     /// # Arguments
     /// - `cal`: the calculation parsed
     /// # Panics
-    /// Encountering an error
+    /// When encountering an error, see [`Self::from_text`].
     /// # Returns
-    /// `Self`
+    /// [`self`]
     #[must_use]
     pub fn from_text_force(cal: &str) -> Self {
         Self::from_text(cal).expect("couldn't parse expressions")
     }
 
-    /// Parses tokens to construct a `ExprStream`.
+    /// Parses tokens to construct a [`ExprStream`].
     /// # Arguments
     /// - `cal`: the calculation parsed
     /// # Errors
     /// See [`TokenStream::as_expressions`]
     /// # Returns
-    /// `Self`
+    /// [`self`]
     pub fn from_token_vec(tokens: &[Token]) -> Result<Self, ExpressionParsingError> {
         TokenStream::from_vec(tokens.to_vec()).as_expressions()
     }
 
-    /// Parses tokens to construct a `ExprStream`, panicking when it encounters an error.
+    /// Parses tokens to construct a [`ExprStream`], panicking when it encounters an error.
     /// # Arguments
     /// - `cal`: the calculation parsed
     /// # Panics
-    /// Encountering an error
+    /// Encountering an error, see [`Self::from_token_vec`]
     /// # Returns
     /// `Self`
     #[must_use]
@@ -559,14 +605,14 @@ impl ExprStream {
         Self::from_token_vec(tokens).expect("couldn't parse expressions")
     }
 
-    /// Converts a `Token` slice into a vector of `Expression`s.
+    /// Converts a [`Token`] slice into a vector of [`Expression`]s.
     /// # Arguments
-    /// - `tokens`: a slice of `Token`s
+    /// - `tokens`: a slice of [`Token`]s
     /// # Errors
-    /// - `NoNeighboringOperands`: an operator doesn't have an valid operand at at least one side of it (e.g. _1 +_ or _+ 1_)
-    /// - `OperandNotNumber`: an operand of an `Whole`, `Left` or `Right` expression type is not a valid number
+    /// - [`ExpressionParsingError::NoNeighboringOperands`]: an operator doesn't have an valid operand at at least one side of it (e.g. _1 +_ or _+ 1_)
+    /// - [`ExpressionParsingError::OperandNotNumber`]: an operand of an [`ExpressionType::Whole`], [`ExpressionType::Left`] or [`ExpressionType::Right`] expression type is not a valid number
     /// # Returns
-    /// A vector of `Expression`s.
+    /// A vector of [`Expression`]s.
     pub fn from_token_stream(stream: &TokenStream) -> Result<Self, ExpressionParsingError> {
         let mut operators = get_operator_in_tokens(stream);
         operators.sort();
@@ -599,22 +645,22 @@ impl ExprStream {
         Ok(Self::from_vec(expressions))
     }
 
-    /// Constructs a new `ExprStream` from a vector of `Expression`s.
+    /// Constructs a new [`ExprStream`] from a vector of [`Expression`]s.
     /// # Arguments
     /// - `expressions`: the vector
     /// # Returns
-    /// `Self`
+    /// [`self`]
     #[must_use]
     pub const fn from_vec(expressions: Vec<Expression>) -> Self {
         Self { expressions }
     }
 
-    /// Evaluates a slice of `Expression`s to a `f32` number.
+    /// Evaluates a slice of [`Expression`]s to a `f32` number.
     /// # Arguments
-    /// - `exprs`: A slice of `Expression`s
+    /// - `exprs`: A slice of [`Expression`]s
     /// # Errors
-    /// - `UnorderedExpressions`: Caused when the function tries to evaluate an `Expression`, linking to
-    ///   another that hasn't been evaluate yet. Check if you are sorting the `Expression`s in accordance with the order of operators.
+    /// - [`EvalCalculationError::UnorderedExpressions`]: Caused when the function tries to evaluate an [`Expression`], linking to
+    ///   another that hasn't been evaluate yet. Check if you are sorting the [`Expression`]s in accordance with the order of operators.
     /// # Example
     /// ```
     /// use simp_cal::expression::ExprStream;
@@ -624,15 +670,15 @@ impl ExprStream {
     /// ```
     /// # Returns
     /// The calculated number
-    pub fn evaluate(&self) -> Result<f32, crate::eval::EvalCalculationErr> {
+    pub fn evaluate(&self) -> Result<CalResult, EvalCalculationError> {
         eval_calculation(&self.expressions)
     }
 
-    /// Checks if a expression slice is valid, this means it can be calculated without error.
+    /// Checks if a [`Expression`] slice is valid, this means it can be calculated without an error.
     /// # Arguments
-    /// - `expr`: a slice of expressions
+    /// - `expr`: a slice of [`Expression`]s
     /// # Returns
-    /// `None`, if the slice is valid, otherwise returns the reason why it is invalid.
+    /// [`None`], if the slice is valid, otherwise returns the reason why it is invalid.
     /// # Note
     /// This doesn't check for expressions that don't follow the order of operations.
     #[must_use]
@@ -724,21 +770,21 @@ impl fmt::Display for ExprStream {
     }
 }
 
-/// A reason why an `ExpressionStream` isn't valid.
+/// A reason why an [`ExprStream`] isn't valid.
 #[derive(Debug, PartialEq, Eq)]
 pub enum ExpressionInvalidReason {
-    /// When the first expression is not the `ExpressionType` _Whole_.
+    /// When the first expression is not the [`ExpressionType::Whole`].
     FirstExprNotWhole,
-    /// When there an expression that is not referenced by another expression, the exception is
-    /// when the expression is the last one.
+    /// When there an [`Expression`] that is not referenced by another [`Expression`], the exception is
+    /// when the [`Expression`] is the last one.
     UnreferencedExprs {
-        /// The indices of the expressions that are not referenced.
+        /// The indices of the [`Expression`]s that are not referenced.
         indices: Vec<usize>,
     },
-    /// When an expression's reference is not in range of the slice, or has been referenced
+    /// When an [`Expression`]'s reference is not in range of the slice, or has been referenced
     /// twice.
     ReferenceError {
-        /// The index of the expression
+        /// The index of the [`Expression`]
         index: usize,
     },
 }
@@ -756,23 +802,23 @@ impl fmt::Display for ExpressionInvalidReason {
     }
 }
 
-/// Errors relating to expression parsing.
+/// Errors relating to [`Expression`] parsing.
 /// # Used in
 /// - `tree_tokens`
 #[derive(Debug, PartialEq)]
 pub enum ExpressionParsingError {
     /// The operand is not a number.
     OperandNotNumber {
-        /// The position of the `Operand` relative to an operator
+        /// The position of the `operand` relative to an operator
         position: OperandPosition,
-        /// The token of the operand.
+        /// The token of the `operand`.
         token: Token,
     },
     /// The operator's has no neighbor in a direction.
-    NoNeighbouringOperands {
-        /// The position of the `Operand` relative to an operator
+    NoNeighboringOperands {
+        /// The position of the `operand` relative to an operator
         position: OperandPosition,
-        /// The index of the would be operand
+        /// The index of the would be `operand`
         place: usize,
     },
 }
@@ -782,7 +828,7 @@ impl fmt::Display for ExpressionParsingError {
             Self::OperandNotNumber { position, token } => {
                 write!(f, "{position} token {token:?} is not a number",)
             }
-            Self::NoNeighbouringOperands { position, place } => {
+            Self::NoNeighboringOperands { position, place } => {
                 write!(
                     f,
                     "neighbour to the {position} (place: {place}) was out of bounds",

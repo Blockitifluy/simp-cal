@@ -2,13 +2,14 @@
 use std::{error::Error, fmt};
 
 use crate::{
+    CalResult,
     expression::{Expression, ExpressionType},
     operator::{InfixOperator, OperandPosition, Operator, UnaryOperator},
 };
 
 macro_rules! expr_err {
     ($index:expr, $position: expr, $expr:  expr) => {
-        return Err(EvalCalculationErr::UnorderedExpressions {
+        return Err(EvalCalculationError::UnorderedExpressions {
             index: $index,
             position: $position,
             expr: $expr,
@@ -20,8 +21,8 @@ macro_rules! expr_err {
 fn eval_infix(
     op: InfixOperator,
     expr: &Expression,
-    results: &[f32],
-) -> Result<f32, EvalCalculationErr> {
+    results: &[CalResult],
+) -> Result<CalResult, EvalCalculationError> {
     let (l_ant, r_ant) = match expr.expr_type {
         ExpressionType::Whole { left, right } => Ok((left, right)),
         ExpressionType::Left { left, right } => {
@@ -55,8 +56,8 @@ fn eval_infix(
 fn eval_unary(
     op: UnaryOperator,
     expr: &Expression,
-    results: &[f32],
-) -> Result<f32, EvalCalculationErr> {
+    results: &[CalResult],
+) -> Result<CalResult, EvalCalculationError> {
     match expr.expr_type {
         ExpressionType::UnaryWhole { operand } => Ok(op.compute(operand)),
         ExpressionType::UnaryOp { operand } => {
@@ -69,8 +70,8 @@ fn eval_unary(
     }
 }
 
-pub(crate) fn eval_calculation(exprs: &[Expression]) -> Result<f32, EvalCalculationErr> {
-    let mut results: Vec<f32> = Vec::with_capacity(16);
+pub(crate) fn eval_calculation(exprs: &[Expression]) -> Result<CalResult, EvalCalculationError> {
+    let mut results: Vec<CalResult> = Vec::with_capacity(16);
 
     for expr in exprs {
         let compute = match expr.operator {
@@ -80,13 +81,13 @@ pub(crate) fn eval_calculation(exprs: &[Expression]) -> Result<f32, EvalCalculat
 
         results.push(compute);
     }
-    let eval = results.last().unwrap_or(&0.0f32);
+    let eval = results.last().unwrap_or(&0.0);
     Ok(*eval)
 }
 
 /// Used for errors about evaluating a calculation.
 #[derive(Debug, PartialEq)]
-pub enum EvalCalculationErr {
+pub enum EvalCalculationError {
     /// Raised when an expression (of the type `Op`, `Left`, `Right`) can't get the value of the
     /// linked expression, because it hasn't been evaluated yet.
     ///
@@ -100,7 +101,7 @@ pub enum EvalCalculationErr {
         expr: Expression,
     },
 }
-impl fmt::Display for EvalCalculationErr {
+impl fmt::Display for EvalCalculationError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::UnorderedExpressions {
@@ -115,4 +116,4 @@ impl fmt::Display for EvalCalculationErr {
     }
 }
 
-impl Error for EvalCalculationErr {}
+impl Error for EvalCalculationError {}

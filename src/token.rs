@@ -6,6 +6,7 @@ use std::{
 };
 
 use crate::{
+    CalResult,
     expression::{ExprStream, ExpressionParsingError},
     operator::{
         InfixOperator, OperatorTrait, ProcessedOperator, UnaryOperator, UnaryType,
@@ -13,7 +14,7 @@ use crate::{
     },
 };
 
-/// Creates a new `InfixOperator` token.
+/// Creates a new [`TokenType::Infix`] token.
 /// # Arguments
 /// - `$bracket_count` - the amount of brackets wrapped around the token
 /// - `$oper` - the infix operator assigned to the token.
@@ -27,7 +28,7 @@ macro_rules! token_infix {
     };
 }
 
-/// Creates a new `UnaryOperator` token.
+/// Creates a new [`TokenType::Unary`] token.
 /// # Arguments
 /// - `$bracket_count` - the amount of brackets wrapped around the token
 /// - `$oper` - the unary operator assigned to the token
@@ -41,7 +42,7 @@ macro_rules! token_unary {
     };
 }
 
-/// Creates a new `Number` token.
+/// Creates a new [`TokenType::Number`] token.
 /// # Arguments
 /// - `$bracket_count` - the amount of brackets wrapped around the token
 /// - `$num` - The number assigned to the token.
@@ -66,16 +67,13 @@ pub struct Token {
     /// identified as an decrease of this value.
     pub bracket_count: BracketLevel,
     /// The type of Token.
-    /// # Examples
-    /// - `Number`,
-    /// - `Operator`
     pub token_type: TokenType,
 }
 impl Token {
-    /// Creates a new token.
+    /// Creates a new [`Token`].
     /// # Arguments
-    /// - `bracket_count`: the amount of brackets wrapped around the token
-    /// - `token_type`: the type of Token
+    /// - `bracket_count`: the amount of brackets wrapped around the [`Token`]
+    /// - `token_type`: the type of [`Token`]
     #[must_use]
     pub const fn new(bracket_count: BracketLevel, token_type: TokenType) -> Self {
         Self {
@@ -84,17 +82,29 @@ impl Token {
         }
     }
 
-    /// Creates a `ProcessedOperator` from `self`.
+    /// Creates a [`ProcessedOperator`] from [`self`].
     /// # Arguments
-    /// - `i`: the index of the token inside of a collection
+    /// - `i`: the index of the [`Token`] inside of a collection
     /// # Returns
-    /// An optional `ProcessedOperator`. Returns `None` when token isn't a type of operator.
+    /// An optional [`ProcessedOperator`]. Returns [`None`] when token isn't a type of operator.
     #[must_use]
     pub const fn as_processed_operator(&self, i: usize) -> Option<ProcessedOperator> {
         match self.token_type {
             TokenType::Infix(op) => Some(ProcessedOperator::new_infix(self.bracket_count, op, i)),
             TokenType::Unary(op) => Some(ProcessedOperator::new_unary(self.bracket_count, op, i)),
             TokenType::Number(_) => None,
+        }
+    }
+
+    /// Returns the number inside [`self`]. [`self`] has to be of type [`TokenType::Number`].
+    /// # Returns
+    /// An optional `f32`, returns [`None`] if [`self`] is not a number.
+    #[must_use]
+    pub const fn as_number(&self) -> Option<CalResult> {
+        if let TokenType::Number(num) = self.token_type {
+            Some(num)
+        } else {
+            None
         }
     }
 }
@@ -105,27 +115,27 @@ impl fmt::Display for Token {
     }
 }
 
-/// The type of the token.
+/// The type of the [`Token`].
 /// # Examples
-/// - 10.2 is represented as a `Number(10.2)`
-/// - `+` is represented as a `Operator(Operator::Add)`
+/// - 10.2 is represented as a [`TokenType::Number(10.2)`]
+/// - `+` is represented as a [`TokenType::Operator(Operator::Add)`]
 /// # Note
 /// Unary operators are always behind their operands
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum TokenType {
     /// A single number
-    Number(f32),
+    Number(CalResult),
     /// An infix operator
     Infix(InfixOperator),
     /// A unary operator, that could be prefix or suffix
     Unary(UnaryOperator),
 }
 impl TokenType {
-    /// Unwraps _self_ into an `InfixOperator`.
+    /// Unwraps _self_ into an [`TokenType::Infix`].
     /// # Returns
-    /// An `InfixOperator`
+    /// An [`InfixOperator`]
     /// # Panics
-    /// Panics when the `Token` isn't an `InfixOperator`.
+    /// Panics when the [`Token`] isn't an [`TokenType::Infix`].
     #[must_use]
     pub fn unwrap_infix(self) -> InfixOperator {
         let Self::Infix(op) = self else {
@@ -136,9 +146,9 @@ impl TokenType {
 
     /// Unwraps _self_ into an `UnaryOperator`.
     /// # Returns
-    /// An `UnaryOperator`
+    /// An [`UnaryOperator`]
     /// # Panics
-    /// Panics when the `Token` isn't an `UnaryOperator`.
+    /// Panics when the [`Token`] isn't an [`TokenType::Unary`].
     #[must_use]
     pub fn unwrap_unary(self) -> UnaryOperator {
         let Self::Unary(op) = self else {
@@ -147,45 +157,45 @@ impl TokenType {
         op
     }
 
-    /// Unwraps _self_ into a number.
+    /// Unwraps [`self`] into a number.
     /// # Returns
     /// A number
     /// # Panics
-    /// Panics when the `Token` isn't a number.
+    /// Panics when the [`Token`] isn't a number.
     #[must_use]
-    pub fn unwrap_number(&self) -> f32 {
+    pub fn unwrap_number(&self) -> CalResult {
         let Self::Number(num) = self else {
             panic!("couldn't unwrap token into number")
         };
         *num
     }
 
-    /// Returns `true`, if `Token` is an `InfixOperator`.
+    /// Returns `true`, if [`Token`] is an [`TokenType::Infix`].
     #[must_use]
     pub const fn is_infix(&self) -> bool {
         matches!(self, Self::Infix(_))
     }
 
-    /// Returns `true`, if `Token` is an `UnaryOperator`
+    /// Returns `true`, if [`Token`] is an [`TokenType::Unary`].
     #[must_use]
     pub const fn is_unary(&self) -> bool {
         matches!(self, Self::Unary(_))
     }
 
-    /// Returns `true`, if `Token` is any type of `Operator`
+    /// Returns `true`, if [`Token`] is any type of `operator`
     #[must_use]
     pub const fn is_operator(&self) -> bool {
         self.is_unary() || self.is_infix()
     }
 
-    /// Returns `true`, if `Token` is a `Number`.
+    /// Returns `true`, if [`Token`] is a number.
     #[must_use]
     pub const fn is_number(&self) -> bool {
         matches!(self, Self::Number(_))
     }
 }
 
-/// A stream of `Token`s.
+/// A stream of [`Token`]s.
 ///
 /// Used for calculations.
 #[derive(Debug, Clone, Default, PartialEq)]
@@ -193,18 +203,18 @@ pub struct TokenStream {
     tokens: Vec<Token>,
 }
 impl TokenStream {
-    /// Parses the tokens of a calculation.
+    /// Parses text to construct a [`TokenStream`].
     /// # Arguments
     /// - `cal`: calculation string
     /// # Errors
-    /// - `NumberParse`: Operand wasn't a valid number.
-    /// - `HangingBracket`: Calculation has a bracket that hasn't been closed or opened.
-    /// - `InvalidCharacter`: An invalid character or a character used in the wrong context.
-    /// - `EmptyBracket`: A bracket has no characters inside that could be parsed
+    /// - [`TokenParseError::NotANumber`]: Operand wasn't a valid number.
+    /// - [`TokenParseError::HangingBracket`]: Calculation has a bracket that hasn't been closed or opened.
+    /// - [`TokenParseError::InvalidCharacter`]: An invalid character or a character used in the wrong context.
+    /// - [`TokenParseError::EmptyBracket`]: A bracket has no characters inside that could be parsed
     /// # Returns
     /// A result of:
-    /// - `Ok`: A vec of tokens
-    /// - `Err`: A string
+    /// - [`Ok`]: A vec of tokens
+    /// - [`Err`]: A [`TokenParseError`]
     pub fn from_text(cal: &str) -> Result<Self, TokenParseError> {
         let mut r: Vec<Token> = Vec::with_capacity(8);
 
@@ -217,8 +227,8 @@ impl TokenStream {
         macro_rules! parse_b {
             () => {
                 if !num_b.is_empty() {
-                    let Ok(num) = num_b.parse::<f32>() else {
-                        return Err(TokenParseError::NumberParse { token: num_b });
+                    let Ok(num) = num_b.parse::<CalResult>() else {
+                        return Err(TokenParseError::NotANumber { token: num_b });
                     };
 
                     r.push(token_number!(bracket_count, num));
@@ -304,50 +314,50 @@ impl TokenStream {
         Ok(Self::from_vec(r))
     }
 
-    /// Parses text to construct a `TokenStream`.
+    /// Parses text to construct a [`TokenStream`].
     /// # Arguments
     /// - `cal`: the calculation parsed
     /// # Panics
-    /// Encountering an error
+    /// Encountering an error, see [`Self::from_text`].
     /// # Returns
-    /// `Self`
+    /// [`self`]
     #[must_use]
     pub fn from_text_force(cal: &str) -> Self {
         Self::from_text(cal).expect("couldn't parse tokens")
     }
 
-    /// Constructs a new `TokenStream` from a vector of `Token`s.
+    /// Constructs a new [`TokenStream`] from a vector of [`Token`]s.
     /// # Arguments
     /// - `tokens`: the vector
     /// # Returns
-    /// `Self`
+    /// [`self`]
     #[must_use]
     pub const fn from_vec(tokens: Vec<Token>) -> Self {
         Self { tokens }
     }
 
-    /// Gets all of the operators, and returns them as `ProcessedOperator`.
+    /// Gets all of the operators, and returns them as [`ProcessedOperator`].
     /// # Returns
-    /// A vector of `ProcessedOperator`s
+    /// A vector of [`ProcessedOperator`]s
     #[must_use]
     pub fn get_operators(&self) -> Vec<ProcessedOperator> {
         get_operator_in_tokens(&self.tokens)
     }
 
-    /// Evaluates the value of `Self`.
+    /// Evaluates the value of [`self`].
     /// # Errors
-    /// See [`ExpressionParsingError`] and [`crate::eval::EvalCalculationErr`]
+    /// See [`ExpressionParsingError`] and [`EvalCalculationError`]
     /// # Returns
-    /// A number that `TokenStream` is equal to or an `EvalCalculationErr`
-    pub fn evaluate(&self) -> Result<f32, Box<dyn Error>> {
+    /// The result of the [`TokenStream`] or an error.
+    pub fn evaluate(&self) -> Result<CalResult, Box<dyn Error>> {
         Ok(self.as_expressions()?.evaluate()?)
     }
 
-    /// Checks if a token slice is valid, this means it can be parsed into tokens and calculated without error.
+    /// Checks if a [`Token`] slice is valid, this means it can be parsed into [`Token`]s and calculated without error.
     /// # Arguments
-    /// - `token`: a slice of tokens
+    /// - `token`: a slice of [`Token`]s
     /// # Returns
-    /// `None`, if the slice valid, otherwise returns the reason why it is invalid.
+    /// [`None`], if the slice valid, otherwise returns the reason why it is invalid.
     #[must_use]
     pub fn is_valid(&self) -> Option<TokenInvalidReason> {
         // Should start with a number or unary value
@@ -423,26 +433,26 @@ impl TokenStream {
         None
     }
 
-    /// Creates an `ExprStream` from `Self`.
+    /// Creates an [`ExprStream`] from [`self`].
     /// # Errors
     /// See [`ExprStream::from_token_stream`].
     /// # Returns
-    /// `ExprStream`, or an `ExpressionParsingError`
+    /// [`ExprStream`], or an [`ExpressionParsingError`]
     pub fn as_expressions(&self) -> Result<ExprStream, ExpressionParsingError> {
         ExprStream::from_token_stream(self)
     }
 
-    /// Creates an `ExprStream` from `Self`, panicking when it encounters an error.
+    /// Creates an [`ExprStream`] from [`self`], panicking when it encounters an error.
     /// # Panics
-    /// Encountering an error
+    /// Encountering an error, see [`Self::as_expressions`].
     /// # Returns
-    /// `ExprStream`, or an `ExpressionParsingError`
+    /// [`ExprStream`], or an [`ExpressionParsingError`]
     #[must_use]
     pub fn as_expressions_force(&self) -> ExprStream {
         self.as_expressions().expect("couldn't parse expressions")
     }
 
-    /// Deconstructs tokens into it's `String` form, if `Self` is invalid then it returns the
+    /// Deconstructs tokens into it's [`String`] form, if [`self`] is invalid then it returns the
     /// [`TokenInvalidReason`].
     /// # Arguments
     /// - `tokens`: the tokens to be reconstructed
@@ -475,7 +485,7 @@ impl TokenStream {
             .map_or_else(|| Ok(self.as_text_no_check(include_spacing)), Err)
     }
 
-    /// Deconstructs tokens into it's `String` form.
+    /// Deconstructs tokens into it's [`String`] form.
     /// # Arguments
     /// - `tokens`: the tokens to be reconstructed
     /// - `include_spacing`: include whitespace between operators
@@ -601,22 +611,23 @@ impl fmt::Display for TokenStream {
 
 /// An error of relating to parsing tokens.
 /// # Used in
-/// - `parse_tokens`
+/// - [`TokenStream::from_text`],
+/// - [`TokenStream::from_text_force`]
 #[derive(Debug)]
 pub enum TokenParseError {
-    /// Couldn't parse a token as it wasn't a valid number.
-    NumberParse {
-        /// The token
+    /// Couldn't parse a [`Token`] as it wasn't a valid number.
+    NotANumber {
+        /// The [`Token`]
         token: String,
     },
     /// Represents a start bracket with no end, or a end bracket with no start.
     HangingBracket,
-    /// An invalid number fount in calculation string
+    /// An invalid number found in calculation string
     InvalidCharacter {
         /// The invalid character found
         character: char,
     },
-    /// Thrown when a bracket has no tokens inside e.g. `()`.
+    /// Thrown when a bracket has no [`Token`]s inside e.g. `()`.
     EmptyBracket {
         /// The index of the end bracket
         at: usize,
@@ -625,7 +636,7 @@ pub enum TokenParseError {
 impl fmt::Display for TokenParseError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::NumberParse { token } => write!(f, "couldn't parse {token} as a number"),
+            Self::NotANumber { token } => write!(f, "couldn't parse {token} as a number"),
             Self::HangingBracket => write!(f, "bracket hanging"),
             Self::InvalidCharacter { character } => write!(f, "invalid character {character}"),
             Self::EmptyBracket { at } => write!(f, "empty bracket found at {at}"),
@@ -638,15 +649,15 @@ impl Error for TokenParseError {}
 /// A reason why an `TokenStream` isn't valid.
 #[derive(Debug, PartialEq, Eq)]
 pub enum TokenInvalidReason {
-    /// Neighbor is not `Operator`
+    /// Neighbor is not `Operator`.
     NumberPrevInvalid,
-    /// Neighbor is not an `Unary` or `Number`
+    /// Neighbor is not an [`UnaryOperator`] or a number.
     InfixPrevInvalid,
-    /// Neighbor is not an `Infix`
+    /// Neighbor is not an [`TokenType::Infix`].
     UnaryPrevInvalid,
-    /// The first Token isn't a `Unary` or `Number`
+    /// The first [`Token`] isn't a [`TokenType::Unary`] or a number.
     InvalidStart,
-    /// The last Token isn't a `Number`
+    /// The last [`Token`] isn't a `Number`
     InvalidEnd,
     /// Operator has a higher bracket level than it's operands
     OperatorHigherBracketLevel {

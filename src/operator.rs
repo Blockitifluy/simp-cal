@@ -1,5 +1,8 @@
 //! Utility module, for searching for operators inside a collection of tokens.
-use crate::token::{BracketLevel, Token};
+use crate::{
+    CalResult, CalResultInt, CalResultUInt,
+    token::{BracketLevel, Token},
+};
 use std::fmt;
 
 /// The type used to store an operator's binding power
@@ -34,16 +37,16 @@ where
     fn get_binding_power(&self) -> BindPower;
 }
 
-fn factoral(num: f32) -> f32 {
+fn factoral(num: CalResult) -> CalResult {
     if num < 1.0 {
         return 0.0;
-    } else if (num - 1.0).abs() < f32::EPSILON {
+    } else if (num - 1.0).abs() < CalResult::EPSILON {
         return 1.0;
     }
 
     #[allow(clippy::cast_precision_loss)]
     #[allow(clippy::cast_possible_truncation)]
-    let round_num = num as i32;
+    let round_num = num as CalResultInt;
 
     let mut f = 1;
     for i in 1..=round_num {
@@ -51,7 +54,7 @@ fn factoral(num: f32) -> f32 {
     }
 
     #[allow(clippy::cast_precision_loss)]
-    let r = f as f32;
+    let r = f as CalResult;
     r
 }
 
@@ -106,14 +109,14 @@ impl UnaryOperator {
     /// # Returns
     /// The computed result
     #[must_use]
-    pub fn compute(&self, operand: f32) -> f32 {
+    pub fn compute(&self, operand: CalResult) -> CalResult {
         match self {
             Self::Neg => -operand,
             // God damn
             #[allow(clippy::cast_possible_truncation)]
             #[allow(clippy::cast_sign_loss)]
             #[allow(clippy::cast_precision_loss)]
-            Self::BitNot => !(operand as u32) as f32,
+            Self::BitNot => !(operand as CalResultUInt) as CalResult,
             Self::Factorial => factoral(operand),
         }
     }
@@ -197,7 +200,7 @@ impl InfixOperator {
     /// # Returns
     /// The computed result
     #[must_use]
-    pub fn compute(&self, left: f32, right: f32) -> f32 {
+    pub fn compute(&self, left: CalResult, right: CalResult) -> CalResult {
         match self {
             Self::Add => left + right,
             Self::Sub => left - right,

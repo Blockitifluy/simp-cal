@@ -1,5 +1,5 @@
 use crate::{
-    expr_left, expr_op, expr_right, expr_unary_op, expr_unary_whole, expr_whole,
+    CalResult, expr_left, expr_op, expr_right, expr_unary_op, expr_unary_whole, expr_whole,
     expression::{Expression, ExpressionType},
     operator::*,
     token::{Token, TokenType},
@@ -9,7 +9,7 @@ use crate::{
 pub const CALCULATION_EXAMPLE: &str = "2*(71.5-2)+-((1^2)*-3)/2";
 pub const CALCULATION_SPACING_EXAMPLE: &str = "2 * (71.5 - 2) + -((1 ^ 2) * -3) / 2";
 
-pub const EXAMPLE_RESULT: f32 = 140.5;
+pub const EXAMPLE_RESULT: CalResult = 140.5;
 
 pub const EXAMPLE_TOKENS: [Token; 15] = [
     token_number!(2.0),

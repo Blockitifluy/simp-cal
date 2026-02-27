@@ -1,8 +1,5 @@
-#![allow(clippy::perf)]
-#![allow(clippy::pedantic)]
-
 use crate::{
-    eval::{self, EvalCalculationErr},
+    eval::{self, EvalCalculationError},
     expr_left, expr_op, expr_right, expr_unary_op, expr_whole,
     expression::*,
     operator::*,
@@ -47,7 +44,7 @@ fn unordered_expr() {
     let expr = expr_left!(InfixOperator::Add, 2.0, 2);
     assert_eq!(
         ExprStream::from_vec(vec![expr]).evaluate().unwrap_err(),
-        EvalCalculationErr::UnorderedExpressions {
+        EvalCalculationError::UnorderedExpressions {
             index: 2,
             position: OperandPosition::Right,
             expr
@@ -57,7 +54,7 @@ fn unordered_expr() {
     let expr = expr_right!(InfixOperator::Add, 2, 2.0);
     assert_eq!(
         ExprStream::from_vec(vec![expr]).evaluate().unwrap_err(),
-        EvalCalculationErr::UnorderedExpressions {
+        EvalCalculationError::UnorderedExpressions {
             index: 2,
             position: OperandPosition::Left,
             expr
@@ -71,7 +68,7 @@ fn unordered_expr() {
     ]);
     assert_eq!(
         stream.evaluate().unwrap_err(),
-        EvalCalculationErr::UnorderedExpressions {
+        EvalCalculationError::UnorderedExpressions {
             index: 3,
             position: OperandPosition::Right,
             expr: expr_op!(InfixOperator::Add, 0, 3),
@@ -85,7 +82,7 @@ fn unordered_expr() {
     ]);
     assert_eq!(
         stream.evaluate().unwrap_err(),
-        EvalCalculationErr::UnorderedExpressions {
+        EvalCalculationError::UnorderedExpressions {
             index: 5,
             position: OperandPosition::Left,
             expr: expr_op!(InfixOperator::Add, 5, 1),
@@ -95,7 +92,7 @@ fn unordered_expr() {
     let stream = ExprStream::from_vec(vec![expr_unary_op!(UnaryOperator::Neg, 2)]);
     assert_eq!(
         stream.evaluate().unwrap_err(),
-        EvalCalculationErr::UnorderedExpressions {
+        EvalCalculationError::UnorderedExpressions {
             index: 2,
             position: OperandPosition::Unary,
             expr: expr_unary_op!(UnaryOperator::Neg, 2)
@@ -107,7 +104,7 @@ fn unordered_expr() {
 fn eval_err_display() {
     println!(
         "{}",
-        eval::EvalCalculationErr::UnorderedExpressions {
+        eval::EvalCalculationError::UnorderedExpressions {
             index: 0,
             position: OperandPosition::Right,
             expr: expr_left!(InfixOperator::Sub, 2.0, 1)
@@ -115,7 +112,7 @@ fn eval_err_display() {
     );
     println!(
         "{}",
-        eval::EvalCalculationErr::UnorderedExpressions {
+        eval::EvalCalculationError::UnorderedExpressions {
             index: 0,
             position: OperandPosition::Unary,
             expr: expr_right!(InfixOperator::Sub, 1, 2.0),
@@ -123,7 +120,7 @@ fn eval_err_display() {
     );
     println!(
         "{}",
-        eval::EvalCalculationErr::UnorderedExpressions {
+        eval::EvalCalculationError::UnorderedExpressions {
             index: 0,
             position: OperandPosition::Left,
             expr: expr_right!(InfixOperator::Sub, 1, 2.0),

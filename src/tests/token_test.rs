@@ -1,7 +1,5 @@
-#![allow(clippy::perf)]
-#![allow(clippy::pedantic)]
-
 use crate::{
+    CalResult,
     operator::{InfixOperator, UnaryOperator},
     token::*,
     token_infix, token_number, token_unary,
@@ -85,14 +83,14 @@ fn as_text() {
         ])
         .as_text(false),
         Err(TokenInvalidReason::UnaryPrevInvalid)
-    )
+    );
 }
 
 #[test]
 fn to_vec() {
     let vec_token = EXAMPLE_TOKENS.to_vec();
 
-    assert_eq!(TokenStream::from_vec(vec_token.clone()).to_vec(), vec_token)
+    assert_eq!(TokenStream::from_vec(vec_token.clone()).to_vec(), vec_token);
 }
 
 // validation
@@ -101,28 +99,28 @@ fn to_vec() {
 fn validation() {
     let stream = TokenStream::from_vec(EXAMPLE_TOKENS.to_vec());
 
-    assert!(stream.is_valid().is_none())
+    assert!(stream.is_valid().is_none());
 }
 
 #[test]
 fn start_invalidation() {
     let stream = TokenStream::from_vec(vec![token_infix!(InfixOperator::Add)]);
 
-    assert_eq!(stream.is_valid().unwrap(), TokenInvalidReason::InvalidStart)
+    assert_eq!(stream.is_valid().unwrap(), TokenInvalidReason::InvalidStart);
 }
 
 #[test]
 fn end_invalidation() {
     let stream = TokenStream::from_vec(vec![token_number!(2.0), token_infix!(InfixOperator::Add)]);
 
-    assert_eq!(stream.is_valid().unwrap(), TokenInvalidReason::InvalidEnd)
+    assert_eq!(stream.is_valid().unwrap(), TokenInvalidReason::InvalidEnd);
 }
 
 #[test]
 fn one_number_valid() {
     let stream = TokenStream::from_vec(vec![token_number!(2.0)]);
 
-    assert!(stream.is_valid().is_none())
+    assert!(stream.is_valid().is_none());
 }
 
 #[test]
@@ -136,7 +134,7 @@ fn number_prev_invalid() {
     assert_eq!(
         stream.is_valid().unwrap(),
         TokenInvalidReason::NumberPrevInvalid
-    )
+    );
 }
 
 #[test]
@@ -212,7 +210,7 @@ fn higher_bracket_invalid() {
 fn hanging_start_bracket_panic() {
     let input: &str = "1+(2+1";
 
-    println!("{:?}", TokenStream::from_text_force(input))
+    println!("{:?}", TokenStream::from_text_force(input));
 }
 
 #[test]
@@ -251,19 +249,19 @@ fn get_operators() {
 
     let opers = tokens.get_operators();
 
-    assert_eq!(opers, EXAMPLE_OPERATOR_INDEX)
+    assert_eq!(opers, EXAMPLE_OPERATOR_INDEX);
 }
 
 #[test]
 fn set_token_in_stream() {
     let token_vec = EXAMPLE_TOKENS.to_vec();
-    const VAL: f32 = 189.4;
+    const VAL: CalResult = 189.4;
 
     let mut stream = TokenStream::from_vec(token_vec);
 
     stream[0] = token_number!(VAL);
 
-    assert_eq!(token_number!(VAL), stream[0])
+    assert_eq!(token_number!(VAL), stream[0]);
 }
 
 // Unwrap
@@ -309,7 +307,7 @@ fn display_test() {
 fn token_err_display() {
     println!(
         "{}",
-        TokenParseError::NumberParse {
+        TokenParseError::NotANumber {
             token: "err".to_string()
         }
     );
@@ -333,7 +331,7 @@ fn invalid_display() {
 
 #[test]
 fn stream_display() {
-    println!("{}", TokenStream::from_vec(EXAMPLE_TOKENS.to_vec()))
+    println!("{}", TokenStream::from_vec(EXAMPLE_TOKENS.to_vec()));
 }
 
 // Other
