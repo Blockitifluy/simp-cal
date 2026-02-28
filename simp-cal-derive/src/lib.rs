@@ -60,7 +60,7 @@ pub fn derive_operator_impl(input: TokenStream) -> TokenStream {
     let DeriveInput { ident, .. } = item_enum.clone();
 
     let Some(variants) = get_variant_refs(&item_enum) else {
-        panic!(""); // TODO:
+        panic!("Enum variant support only");
     };
 
     let mut op_var = Vec::with_capacity(2);
