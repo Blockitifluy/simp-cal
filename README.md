@@ -58,7 +58,7 @@ Instead: `2^(3^4)`
 - [ ] substitution
 - [ ] functions
 
-<sub>Made by blockitifluy, no dependencies</sub>
+<sub>Made by blockitifluy</sub>
 
 # Example Program
 

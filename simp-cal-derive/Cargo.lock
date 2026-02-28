@@ -61,13 +61,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "simp-cal"
-version = "0.2.6"
-dependencies = [
- "simp-cal-derive",
-]
-
-[[package]]
 name = "simp-cal-derive"
 version = "0.1.0"
 dependencies = [

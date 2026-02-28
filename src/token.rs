@@ -507,7 +507,7 @@ impl TokenStream {
     pub fn as_text_no_check(&self, include_spacing: bool) -> String {
         let mut b = String::with_capacity(16);
         let mut last_bracket_count = 0;
-        let mut suffix_to_push: Option<String> = None;
+        let mut suffix_to_push: Option<char> = None;
         let mut suffix_on_number = false;
 
         for (i, t) in self.tokens.iter().enumerate() {
@@ -527,7 +527,7 @@ impl TokenStream {
                 if let Some(suffix) = &suffix_to_push
                     && !suffix_on_number
                 {
-                    b.push_str(suffix);
+                    b.push(*suffix);
                     suffix_to_push = None;
                 }
             }
@@ -538,7 +538,7 @@ impl TokenStream {
                     if let Some(suffix) = &suffix_to_push
                         && suffix_on_number
                     {
-                        b.push_str(suffix);
+                        b.push(*suffix);
                         suffix_to_push = None;
                     }
                 }
@@ -546,14 +546,14 @@ impl TokenStream {
                     if include_spacing {
                         let _ = write!(b, " {} ", op.as_sign());
                     } else {
-                        b.push_str(op.as_sign());
+                        b.push(op.as_sign());
                     }
                 }
                 TokenType::Unary(op) => match op.unary_type() {
-                    UnaryType::Prefix => b.push_str(op.as_sign()),
+                    UnaryType::Prefix => b.push(op.as_sign()),
                     UnaryType::Suffix => {
                         suffix_on_number = !matches!(self.tokens.get(i + 1), Some(next) if next.bracket_count != t.bracket_count );
-                        suffix_to_push = Some(op.as_sign().to_owned());
+                        suffix_to_push = Some(op.as_sign());
                     }
                 },
             }
@@ -564,7 +564,7 @@ impl TokenStream {
         if last_bracket_count > 0 {
             b.push_str(&")".repeat(last_bracket_count as usize));
             if let Some(suffix) = &suffix_to_push {
-                b.push_str(suffix);
+                b.push(*suffix);
             }
         }
 

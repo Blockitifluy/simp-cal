@@ -7,18 +7,18 @@ fn as_sign() {
     macro_rules! sign {
         ($op:expr, $sign:literal) => {
             assert_eq!($op.as_sign(), $sign);
-            assert_eq!($op.as_sign(), format!("{}", $op));
+            assert_eq!($op.as_sign().to_string(), format!("{}", $op));
         };
     }
 
-    sign!(InfixOperator::Add, "+");
-    sign!(InfixOperator::Sub, "-");
-    sign!(InfixOperator::Mul, "*");
-    sign!(InfixOperator::Div, "/");
-    sign!(InfixOperator::Pow, "^");
+    sign!(InfixOperator::Add, '+');
+    sign!(InfixOperator::Sub, '-');
+    sign!(InfixOperator::Mul, '*');
+    sign!(InfixOperator::Div, '/');
+    sign!(InfixOperator::Pow, '^');
 
-    sign!(UnaryOperator::BitNot, "~");
-    sign!(UnaryOperator::Neg, "-");
+    sign!(UnaryOperator::BitNot, '~');
+    sign!(UnaryOperator::Neg, '-');
 
     assert_eq!(
         InfixOperator::Add,

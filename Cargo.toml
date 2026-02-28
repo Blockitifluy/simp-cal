@@ -12,6 +12,7 @@ categories = ["calculator"]
 f64 = []
 
 [dependencies]
+simp-cal-derive = { path = "simp-cal-derive" }
 
 [profile.release]
 strip = true

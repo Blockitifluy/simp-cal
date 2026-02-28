@@ -1,4 +1,6 @@
 //! Utility module, for searching for operators inside a collection of tokens.
+use simp_cal_derive::OperatorTrait;
+
 use crate::{
     CalResult, CalResultInt, CalResultUInt,
     token::{BracketLevel, Token},
@@ -25,7 +27,7 @@ where
     /// Gets the mathematical symbol correlating to the `Operator`.
     /// # Returns
     /// A mathematical symbol
-    fn as_sign(&self) -> &str;
+    fn as_sign(&self) -> char;
 
     /// Gets the binding power of an `Operator`.
     /// # Returns
@@ -91,13 +93,16 @@ pub enum UnaryType {
 }
 
 /// A unary operator (like -x or x!) used in calculations.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, OperatorTrait)]
 pub enum UnaryOperator {
     /// Negate '-' (prefix)
+    #[operator(sym = '-', bind = 10)]
     Neg,
     /// Bitwise Not '~' (prefix)
+    #[operator(sym = '~', bind = 10)]
     BitNot,
     /// Factorial '!' (suffix)
+    #[operator(sym = '!', bind = 9)]
     Factorial,
 }
 
@@ -146,32 +151,6 @@ impl UnaryOperator {
     }
 }
 
-impl OperatorTrait for UnaryOperator {
-    fn get_operator_from_sign(sign: char) -> Option<Self> {
-        match sign {
-            '-' => Some(Self::Neg),
-            '~' => Some(Self::BitNot),
-            '!' => Some(Self::Factorial),
-            _ => None,
-        }
-    }
-
-    fn as_sign(&self) -> &str {
-        match self {
-            Self::Neg => "-",
-            Self::BitNot => "~",
-            Self::Factorial => "!",
-        }
-    }
-
-    fn get_binding_power(&self) -> BindPower {
-        match self {
-            Self::Neg | Self::BitNot => 10,
-            Self::Factorial => 9,
-        }
-    }
-}
-
 impl fmt::Display for UnaryOperator {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.as_sign())
@@ -179,17 +158,22 @@ impl fmt::Display for UnaryOperator {
 }
 
 /// An infix operator (like x + y) used in calculations.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, OperatorTrait)]
 pub enum InfixOperator {
     /// Add '+'
+    #[operator(sym = '+', bind = 0)]
     Add,
     /// Subtract '-'
+    #[operator(sym = '-', bind = 0)]
     Sub,
     /// Multiply '*'
+    #[operator(sym = '*', bind = 1)]
     Mul,
     /// Divide '/'
+    #[operator(sym = '/', bind = 1)]
     Div,
     /// Power '^'
+    #[operator(sym = '^', bind = 2)]
     Pow,
 }
 impl InfixOperator {
@@ -207,37 +191,6 @@ impl InfixOperator {
             Self::Mul => left * right,
             Self::Div => left / right,
             Self::Pow => left.powf(right),
-        }
-    }
-}
-
-impl OperatorTrait for InfixOperator {
-    fn get_operator_from_sign(sign: char) -> Option<Self> {
-        match sign {
-            '+' => Some(Self::Add),
-            '-' => Some(Self::Sub),
-            '*' => Some(Self::Mul),
-            '/' => Some(Self::Div),
-            '^' => Some(Self::Pow),
-            _ => None,
-        }
-    }
-
-    fn as_sign(&self) -> &str {
-        match self {
-            Self::Add => "+",
-            Self::Sub => "-",
-            Self::Mul => "*",
-            Self::Div => "/",
-            Self::Pow => "^",
-        }
-    }
-
-    fn get_binding_power(&self) -> BindPower {
-        match self {
-            Self::Add | Self::Sub => 0,
-            Self::Mul | Self::Div => 1,
-            Self::Pow => 2,
         }
     }
 }
