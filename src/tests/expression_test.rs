@@ -1,3 +1,6 @@
+#![allow(clippy::perf)]
+#![allow(clippy::pedantic)]
+
 use crate::{
     expr_left, expr_op, expr_right, expr_unary_op, expr_unary_whole, expr_whole,
     expression::{
@@ -140,9 +143,7 @@ fn force_token_vec() {
 #[test]
 fn expr_infix_err() {
     assert_eq!(
-        ExprStream::from_token_vec(&[token_infix!(Add),
-            token_infix!(Mul),
-            token_number!(0.0)]),
+        ExprStream::from_token_vec(&[token_infix!(Add), token_infix!(Mul), token_number!(0.0)]),
         Err(ExpressionParsingError::OperandNotNumber {
             position: OperandPosition::Left,
             token: token_infix!(Add)
@@ -150,11 +151,13 @@ fn expr_infix_err() {
     );
 
     assert_eq!(
-        ExprStream::from_token_vec(&[token_number!(0.0),
+        ExprStream::from_token_vec(&[
+            token_number!(0.0),
             token_infix!(Pow),
             token_number!(0.0),
             token_infix!(Mul),
-            token_infix!(Add)]),
+            token_infix!(Add)
+        ]),
         Err(ExpressionParsingError::OperandNotNumber {
             position: OperandPosition::Right,
             token: token_infix!(Add)
@@ -165,9 +168,7 @@ fn expr_infix_err() {
 #[test]
 fn get_number_from_token() {
     assert_eq!(
-        ExprStream::from_token_vec(&[token_number!(0.0),
-            token_infix!(Mul),
-            token_infix!(Add)]),
+        ExprStream::from_token_vec(&[token_number!(0.0), token_infix!(Mul), token_infix!(Add)]),
         Err(ExpressionParsingError::OperandNotNumber {
             position: OperandPosition::Right,
             token: token_infix!(Add)

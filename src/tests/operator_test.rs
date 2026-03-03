@@ -1,3 +1,6 @@
+#![allow(clippy::perf)]
+#![allow(clippy::pedantic)]
+
 use crate::{CalResult, CalResultUInt, operator::*};
 
 use super::examples::*;

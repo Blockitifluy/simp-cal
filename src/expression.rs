@@ -250,6 +250,7 @@ impl ExpressionType {
     /// - [`ExpressionType::UnaryOp`]
     /// # Returns
     /// `true` if [`self`] is not any type of [`ExpressionType::Whole`].
+    #[inline]
     #[must_use]
     pub const fn is_partial(&self) -> bool {
         !self.is_whole()

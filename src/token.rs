@@ -117,8 +117,8 @@ impl fmt::Display for Token {
 
 /// The type of the [`Token`].
 /// # Examples
-/// - 10.2 is represented as a [`TokenType::Number(10.2)`]
-/// - `+` is represented as a [`TokenType::Operator(Operator::Add)`]
+/// - 10.2 is represented as a `TokenType::Number(10.2)`
+/// - `+` is represented as a `TokenType::Infix(Operator::Add)`
 /// # Note
 /// Unary operators are always behind their operands
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -131,7 +131,7 @@ pub enum TokenType {
     Unary(UnaryOperator),
 }
 impl TokenType {
-    /// Unwraps _self_ into an [`TokenType::Infix`].
+    /// Unwraps [`self`] into an [`InfixOperator`].
     /// # Returns
     /// An [`InfixOperator`]
     /// # Panics
@@ -144,7 +144,7 @@ impl TokenType {
         op
     }
 
-    /// Unwraps _self_ into an `UnaryOperator`.
+    /// Unwraps [`self`] into an [`UnaryOperator`].
     /// # Returns
     /// An [`UnaryOperator`]
     /// # Panics
@@ -241,8 +241,7 @@ impl TokenStream {
             if c == ')' {
                 if bracket_count == 0 {
                     return Err(TokenParseError::HangingBracket);
-                }
-                if last_bracket_input + 1 == i {
+                } else if last_bracket_input + 1 == i {
                     return Err(TokenParseError::EmptyBracket { at: i });
                 }
                 parse_b!();
@@ -278,7 +277,6 @@ impl TokenStream {
                 match unary.unary_type() {
                     UnaryType::Prefix => {
                         r.push(token_unary!(bracket_count, unary));
-                        parse_b!();
                     }
                     UnaryType::Suffix => {
                         if let Some(last) = r.last()
@@ -290,9 +288,9 @@ impl TokenStream {
                             // In cases of x!
                             r.push(token_unary!(bracket_count, unary));
                         }
-                        parse_b!();
                     }
                 }
+                parse_b!();
                 continue;
             }
             prev_infix = false;
@@ -346,7 +344,7 @@ impl TokenStream {
 
     /// Evaluates the value of [`self`].
     /// # Errors
-    /// See [`ExpressionParsingError`] and [`EvalCalculationError`]
+    /// See [`ExpressionParsingError`] and [`crate::eval::EvalCalculationError`]
     /// # Returns
     /// The result of the [`TokenStream`] or an error.
     pub fn evaluate(&self) -> Result<CalResult, Box<dyn Error>> {

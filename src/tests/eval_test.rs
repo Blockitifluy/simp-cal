@@ -1,3 +1,6 @@
+#![allow(clippy::perf)]
+#![allow(clippy::pedantic)]
+
 use crate::{
     eval::{self, EvalCalculationError},
     expr_left, expr_op, expr_right, expr_unary_op, expr_whole,
@@ -6,25 +9,34 @@ use crate::{
     tests::examples::{CALCULATION_EXAMPLE, EXAMPLE_RESULT},
 };
 
+macro_rules! assert_eqf {
+    ($x1:expr, $x2:expr) => {
+        let x1 = $x1;
+        let x2 = $x2;
+
+        assert_eq!(x1, x2, "{} is not equal to {}", x1, x2)
+    };
+}
+
 // Factoral
 
 #[test]
 fn factoral() {
     let stream = ExprStream::from_text_force("4!");
-    assert_eq!(stream.evaluate().unwrap(), 24.0);
+    assert_eqf!(stream.evaluate().unwrap(), 24.0);
 }
 
 #[test]
 fn factoral_one() {
     let stream = ExprStream::from_text_force("1!");
-    assert_eq!(stream.evaluate().unwrap(), 1.0);
+    assert_eqf!(stream.evaluate().unwrap(), 1.0);
 }
 
 #[test]
 fn factoral_less_than_one() {
-    assert_eq!(ExprStream::from_text_force("0!").evaluate().unwrap(), 0.0);
-    assert_eq!(ExprStream::from_text_force("0.5!").evaluate().unwrap(), 0.0);
-    assert_eq!(
+    assert_eqf!(ExprStream::from_text_force("0!").evaluate().unwrap(), 0.0);
+    assert_eqf!(ExprStream::from_text_force("0.5!").evaluate().unwrap(), 0.0);
+    assert_eqf!(
         ExprStream::from_text_force("(-0.5)!").evaluate().unwrap(),
         0.0
     );
@@ -36,7 +48,7 @@ fn factoral_less_than_one() {
 fn eval_cal() {
     let expr = ExprStream::from_text_force(CALCULATION_EXAMPLE);
 
-    assert_eq!(expr.evaluate().unwrap(), EXAMPLE_RESULT);
+    assert_eqf!(expr.evaluate().unwrap(), EXAMPLE_RESULT);
 }
 
 #[test]

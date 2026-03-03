@@ -11,10 +11,7 @@ use std::fmt;
 pub type BindPower = u8;
 
 /// A common trait that every operator type implements.
-pub trait OperatorTrait
-where
-    Self: fmt::Display,
-{
+pub trait OperatorTrait: fmt::Display {
     /// Gets the `Operator` correlating to a mathematical symbol.
     /// # Arguments
     /// - `sign`: the mathematical symbol
@@ -92,7 +89,7 @@ pub enum UnaryType {
     Prefix,
 }
 
-/// A unary operator (like -x or x!) used in calculations.
+/// A unary operator (like _-x_ or_ x_!) used in calculations.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, OperatorTrait)]
 pub enum UnaryOperator {
     /// Negate '-' (prefix)
@@ -157,7 +154,7 @@ impl fmt::Display for UnaryOperator {
     }
 }
 
-/// An infix operator (like x + y) used in calculations.
+/// An infix operator (like _x + y_) used in calculations.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, OperatorTrait)]
 pub enum InfixOperator {
     /// Add '+'
