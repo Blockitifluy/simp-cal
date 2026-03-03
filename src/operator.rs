@@ -1,5 +1,5 @@
 //! Utility module, for searching for operators inside a collection of tokens.
-use simp_cal_derive::OperatorTrait;
+use kalk_derive::OperatorTrait;
 
 use crate::{
     CalResult, CalResultInt, CalResultUInt,

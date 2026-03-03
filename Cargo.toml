@@ -1,10 +1,10 @@
 [package]
-name = "simp-cal"
+name = "kalk"
 version = "0.3.6"
 edition = "2024"
 description = "Converts text calculations into expressions then can calculate them"
 license-file = "LICENSE"
-repository = "https://github.com/Blockitifluy/simp-cal"
+repository = "https://github.com/Blockitifluy/kalk"
 keywords = ["calculator"]
 categories = ["calculator"]
 
@@ -12,7 +12,7 @@ categories = ["calculator"]
 f64 = []
 
 [dependencies]
-simp-cal-derive = { path = "simp-cal-derive" }
+kalk-derive = { path = "kalk-derive" }
 
 [profile.release]
 strip = true

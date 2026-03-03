@@ -1,7 +1,7 @@
 Calculates an equation and then evaluates it into a single number.
 This program follows the rules of order of operations and bracket support.
 
-Usage: simp-cal [equations] [options]
+Usage: kalk [equations] [options]
 
 Arguments:
   [equations] ... A list of equations to evaluate

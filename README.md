@@ -1,6 +1,4 @@
-# simp-cal
-
-_Simple Calculate_
+# Kalk
 
 This project parses a calculation into expressions, and then evaluates it.
 
@@ -23,6 +21,8 @@ The `TokenStream` can be parsed back into text by using `as_text`;
 note: this doesn't return any errors, so use `is_valid` to check beforehand.
 
 ```rust
+use kalk::expression::ExprStream;
+
 let cal = "1+-(4*2.5)";
 let stream = ExprStream::from_text(cal)?;
 

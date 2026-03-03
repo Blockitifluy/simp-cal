@@ -1,4 +1,4 @@
-use simp_cal::token::*;
+use kalk::token::*;
 use std::{env, error::Error, io};
 
 macro_rules! verbose {
@@ -94,7 +94,7 @@ fn main() -> ProgramResult<()> {
         return Ok(());
     }
     if flags.version {
-        println!("simp-cal version {}", PKG_VERSION.unwrap_or("unknown"));
+        println!("kalk version {}", PKG_VERSION.unwrap_or("unknown"));
         return Ok(());
     }
 
